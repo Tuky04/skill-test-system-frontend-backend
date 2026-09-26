@@ -1,0 +1,19 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect the folder URL before directory indexing is evaluated.
+    RewriteCond %{REQUEST_URI} ^/skill-test-system/?$ [NC]
+    RewriteRule ^ /skill-test-system/frontend/build/ [R=302,L]
+
+    # The Node backend and uploaded documents must never be served by Apache.
+    RewriteRule ^backend(?:/|$) - [F,L,NC]
+
+    # Apache only needs the compiled frontend, not its source or local env files.
+    RewriteRule ^frontend/(?!build(?:/|$)) - [F,L,NC]
+</IfModule>
+
+<FilesMatch "(^\.|\.(?:env|sql|log|bak|ini|conf|key|pem)$)">
+    Require all denied
+</FilesMatch>

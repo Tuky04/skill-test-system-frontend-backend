@@ -1,0 +1,589 @@
+/* ═══════════════════════════════════════════════════════════════
+   RMUTS Design System — มหาวิทยาลัยเทคโนโลยีราชมงคลสุวรรณภูมิ
+   คณะบริหารธุรกิจและเทคโนโลยีสารสนเทศ
+   ธีม: น้ำเงิน-ทอง
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&display=swap');
+
+/* ── CSS Variables ──────────────────────────────────────────── */
+:root {
+  /* Primary */
+  --rmuts-navy:        #1a2f6e;
+  --rmuts-navy-dark:   #0f1f4a;
+  --rmuts-navy-deeper: #0a1535;
+  --rmuts-navy-light:  #eef2ff;
+
+  /* Accent */
+  --rmuts-gold:        #F5A800;
+  --rmuts-gold-dark:   #c47f00;
+  --rmuts-gold-light:  #FEF3C7;
+  --rmuts-gold-pale:   #fffbeb;
+
+  /* Semantic */
+  --rmuts-success:     #27AE60;
+  --rmuts-success-bg:  #EAFAF1;
+  --rmuts-danger:      #E74C3C;
+  --rmuts-danger-bg:   #FADBD8;
+  --rmuts-warning:     #F39C12;
+  --rmuts-warning-bg:  #FEF9E7;
+  --rmuts-info:        #2980B9;
+  --rmuts-info-bg:     #EBF5FB;
+
+  /* Neutrals */
+  --rmuts-white:       #ffffff;
+  --rmuts-bg:          #F4F6F8;
+  --rmuts-surface:     #ffffff;
+  --rmuts-border:      #E2E8F0;
+  --rmuts-border-md:   #CBD5E1;
+  --rmuts-text-1:      #1e293b;
+  --rmuts-text-2:      #475569;
+  --rmuts-text-3:      #94a3b8;
+
+  /* Typography */
+  --rmuts-font:        'Sarabun', sans-serif;
+  --rmuts-font-serif:  'Noto Serif Thai', serif;
+
+  /* Layout */
+  --rmuts-radius-sm:   6px;
+  --rmuts-radius-md:   8px;
+  --rmuts-radius-lg:   12px;
+  --rmuts-radius-xl:   16px;
+  --rmuts-shadow-sm:   0 2px 8px rgba(0,0,0,0.06);
+  --rmuts-shadow-md:   0 4px 16px rgba(0,0,0,0.08);
+  --rmuts-shadow-lg:   0 8px 32px rgba(0,0,0,0.12);
+
+  /* Navbar height */
+  --rmuts-navbar-h:    60px;
+  --rmuts-topbar-h:    38px;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--rmuts-font);
+  background: var(--rmuts-bg);
+  color: var(--rmuts-text-1);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Top Bar (แถบเหลืองบนสุด) ──────────────────────────────── */
+.rmuts-topbar {
+  background: var(--rmuts-gold);
+  height: var(--rmuts-topbar-h);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.rmuts-topbar__logo {
+  width: 28px; height: 28px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  flex-shrink: 0;
+}
+.rmuts-topbar__name {
+  font-family: var(--rmuts-font-serif);
+  font-size: 13px; font-weight: 700;
+  color: var(--rmuts-navy);
+  line-height: 1.4;
+}
+.rmuts-topbar__sub {
+  font-size: 10.5px; color: var(--rmuts-navy);
+  opacity: 0.7;
+}
+
+/* ── Navbar (แถบน้ำเงิน) ────────────────────────────────────── */
+.rmuts-navbar {
+  background: var(--rmuts-navy);
+  height: var(--rmuts-navbar-h);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid var(--rmuts-gold);
+  position: sticky;
+  top: var(--rmuts-topbar-h);
+  z-index: 99;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.rmuts-navbar__brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.rmuts-navbar__brand-logo {
+  width: 32px; height: 32px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  filter: brightness(1.2);
+}
+.rmuts-navbar__brand-text {
+  font-family: var(--rmuts-font-serif);
+  font-size: 14px; font-weight: 600;
+  color: var(--rmuts-gold);
+  line-height: 1.3;
+}
+.rmuts-navbar__brand-sub {
+  font-size: 11px; color: rgba(245,168,0,0.65);
+}
+.rmuts-navbar__actions {
+  display: flex; align-items: center; gap: 8px;
+}
+.rmuts-navbar__user {
+  font-size: 13px; color: rgba(255,255,255,0.8);
+  margin-right: 8px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.rmuts-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px;
+  border: none; border-radius: var(--rmuts-radius-md);
+  font-size: 13px; font-weight: 600;
+  font-family: var(--rmuts-font);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  position: relative; overflow: hidden;
+  white-space: nowrap;
+}
+.rmuts-btn:active { transform: scale(0.98); }
+.rmuts-btn--primary {
+  background: var(--rmuts-navy);
+  color: white;
+}
+.rmuts-btn--primary::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--rmuts-gold-dark), var(--rmuts-gold), var(--rmuts-gold-dark));
+}
+.rmuts-btn--primary:hover { background: var(--rmuts-navy-dark); }
+.rmuts-btn--gold {
+  background: var(--rmuts-gold);
+  color: var(--rmuts-navy);
+}
+.rmuts-btn--gold:hover { background: var(--rmuts-gold-dark); color: white; }
+.rmuts-btn--outline {
+  background: transparent;
+  color: var(--rmuts-navy);
+  border: 1.5px solid var(--rmuts-navy);
+}
+.rmuts-btn--outline:hover { background: var(--rmuts-navy-light); }
+.rmuts-btn--danger {
+  background: var(--rmuts-danger);
+  color: white;
+}
+.rmuts-btn--success {
+  background: var(--rmuts-success);
+  color: white;
+}
+.rmuts-btn--sm { padding: 5px 12px; font-size: 12px; }
+.rmuts-btn--lg { padding: 13px 24px; font-size: 15px; width: 100%; justify-content: center; }
+.rmuts-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.rmuts-card {
+  background: var(--rmuts-surface);
+  border-radius: var(--rmuts-radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--rmuts-shadow-sm);
+  border: 1px solid var(--rmuts-border);
+  margin-bottom: 20px;
+}
+.rmuts-card__title {
+  font-size: 15px; font-weight: 600;
+  color: var(--rmuts-navy);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rmuts-border);
+  display: flex; align-items: center; gap: 8px;
+}
+.rmuts-card__title::before {
+  content: '';
+  width: 4px; height: 18px;
+  background: linear-gradient(var(--rmuts-navy), var(--rmuts-gold));
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+/* ── Stat Cards ─────────────────────────────────────────────── */
+.rmuts-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.rmuts-stat-card {
+  background: var(--rmuts-surface);
+  border-radius: var(--rmuts-radius-lg);
+  padding: 18px 20px;
+  border-left: 4px solid var(--rmuts-navy);
+  box-shadow: var(--rmuts-shadow-sm);
+  border: 1px solid var(--rmuts-border);
+  border-left-width: 4px;
+}
+.rmuts-stat-card__value {
+  font-size: 28px; font-weight: 700;
+  color: var(--rmuts-navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.rmuts-stat-card__label {
+  font-size: 12px; font-weight: 600;
+  color: var(--rmuts-text-2);
+}
+.rmuts-stat-card__sub {
+  font-size: 11px; color: var(--rmuts-text-3);
+  margin-top: 2px;
+}
+.rmuts-stat-card--gold  { border-left-color: var(--rmuts-gold); }
+.rmuts-stat-card--gold .rmuts-stat-card__value { color: var(--rmuts-gold-dark); }
+.rmuts-stat-card--green { border-left-color: var(--rmuts-success); }
+.rmuts-stat-card--green .rmuts-stat-card__value { color: var(--rmuts-success); }
+.rmuts-stat-card--red   { border-left-color: var(--rmuts-danger); }
+.rmuts-stat-card--red .rmuts-stat-card__value { color: var(--rmuts-danger); }
+
+/* ── Form ───────────────────────────────────────────────────── */
+.rmuts-form-group { margin-bottom: 16px; }
+.rmuts-label {
+  display: block;
+  font-size: 13px; font-weight: 600;
+  color: var(--rmuts-text-1);
+  margin-bottom: 5px;
+}
+.rmuts-label span { color: var(--rmuts-danger); }
+.rmuts-input-wrap { position: relative; }
+.rmuts-input-icon {
+  position: absolute; left: 11px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--rmuts-text-3); font-size: 16px;
+  pointer-events: none;
+}
+.rmuts-input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1.5px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-md);
+  font-size: 14px; font-family: var(--rmuts-font);
+  color: var(--rmuts-text-1);
+  outline: none; background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rmuts-input:focus {
+  border-color: var(--rmuts-navy);
+  box-shadow: 0 0 0 3px rgba(26,47,110,0.1);
+}
+.rmuts-input::placeholder { color: var(--rmuts-text-3); }
+.rmuts-input--no-icon { padding-left: 12px; }
+.rmuts-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-md);
+  font-size: 14px; font-family: var(--rmuts-font);
+  color: var(--rmuts-text-1);
+  outline: none; background: white;
+  cursor: pointer;
+}
+.rmuts-select:focus { border-color: var(--rmuts-navy); }
+
+/* ── Badges / Status ────────────────────────────────────────── */
+.rmuts-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  white-space: nowrap;
+}
+.rmuts-badge--navy    { background: var(--rmuts-navy-light); color: var(--rmuts-navy); }
+.rmuts-badge--gold    { background: var(--rmuts-gold-light); color: #92400E; }
+.rmuts-badge--green   { background: var(--rmuts-success-bg); color: #1E8449; }
+.rmuts-badge--red     { background: var(--rmuts-danger-bg); color: #78281F; }
+.rmuts-badge--warning { background: var(--rmuts-warning-bg); color: #7D6608; }
+.rmuts-badge--info    { background: var(--rmuts-info-bg); color: #1A5276; }
+.rmuts-badge--gray    { background: #F4F6F7; color: #566573; }
+
+/* ── Alert ──────────────────────────────────────────────────── */
+.rmuts-alert {
+  padding: 12px 16px;
+  border-radius: var(--rmuts-radius-md);
+  font-size: 14px; font-weight: 500;
+  margin-bottom: 20px;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.rmuts-alert--success { background: var(--rmuts-success-bg); color: #1E8449; }
+.rmuts-alert--error   { background: var(--rmuts-danger-bg); color: #78281F; }
+.rmuts-alert--warning { background: var(--rmuts-warning-bg); color: #7D6608; }
+.rmuts-alert--info    { background: var(--rmuts-info-bg); color: #1A5276; }
+
+/* ── Table ──────────────────────────────────────────────────── */
+.rmuts-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--rmuts-radius-lg);
+  border: 1px solid var(--rmuts-border);
+}
+.rmuts-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 14px;
+}
+.rmuts-table thead tr {
+  background: var(--rmuts-navy);
+  color: white;
+}
+.rmuts-table thead th {
+  padding: 12px 14px;
+  text-align: left; font-weight: 600;
+  white-space: nowrap;
+}
+.rmuts-table tbody tr {
+  border-bottom: 1px solid var(--rmuts-border);
+  transition: background 0.15s;
+}
+.rmuts-table tbody tr:hover { background: #F8FAFC; }
+.rmuts-table tbody tr:last-child { border-bottom: none; }
+.rmuts-table td { padding: 12px 14px; vertical-align: middle; }
+.rmuts-table--striped tbody tr:nth-child(even) { background: #FDFEFF; }
+
+/* ── Pagination ─────────────────────────────────────────────── */
+.rmuts-pagination {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-top: 1px solid var(--rmuts-border);
+  margin-top: 4px;
+}
+.rmuts-pagination__info { font-size: 13px; color: var(--rmuts-text-3); }
+.rmuts-pagination__btns { display: flex; gap: 6px; }
+.rmuts-pagination__btn {
+  padding: 5px 10px;
+  border: 1.5px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-md);
+  background: white; cursor: pointer;
+  font-size: 13px; color: var(--rmuts-text-2);
+  transition: all 0.15s;
+  min-width: 32px; text-align: center;
+}
+.rmuts-pagination__btn:hover { border-color: var(--rmuts-navy); color: var(--rmuts-navy); }
+.rmuts-pagination__btn--active {
+  background: var(--rmuts-navy); color: white;
+  border-color: var(--rmuts-navy); font-weight: 600;
+}
+.rmuts-pagination__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Page Layout ────────────────────────────────────────────── */
+.rmuts-page {
+  min-height: 100vh;
+  background: var(--rmuts-bg);
+  display: flex; flex-direction: column;
+}
+.rmuts-page__body {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 20px;
+  width: 100%;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────── */
+.rmuts-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--rmuts-border);
+  margin-bottom: 24px;
+  gap: 0;
+}
+.rmuts-tab {
+  padding: 10px 20px;
+  border: none; background: none;
+  cursor: pointer;
+  font-size: 14px; font-weight: 500;
+  color: var(--rmuts-text-2);
+  font-family: var(--rmuts-font);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.rmuts-tab:hover { color: var(--rmuts-navy); }
+.rmuts-tab--active {
+  color: var(--rmuts-navy);
+  border-bottom-color: var(--rmuts-gold);
+  font-weight: 600;
+}
+
+/* ── Search Bar ─────────────────────────────────────────────── */
+.rmuts-search {
+  padding: 9px 14px;
+  border: 1.5px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-md);
+  font-size: 13px; font-family: var(--rmuts-font);
+  outline: none; color: var(--rmuts-text-1);
+  min-width: 200px;
+}
+.rmuts-search:focus { border-color: var(--rmuts-navy); }
+
+/* ── Score Input ────────────────────────────────────────────── */
+.rmuts-score-input {
+  width: 72px;
+  padding: 7px 8px;
+  border: 1.5px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-md);
+  font-size: 14px; text-align: center;
+  font-family: var(--rmuts-font);
+  outline: none;
+}
+.rmuts-score-input:focus { border-color: var(--rmuts-navy); }
+
+/* ── Modal / Overlay ────────────────────────────────────────── */
+.rmuts-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center;
+  justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+.rmuts-modal {
+  background: white;
+  border-radius: var(--rmuts-radius-xl);
+  padding: 28px 32px;
+  width: 100%; max-width: 560px;
+  max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+}
+.rmuts-modal__title {
+  font-size: 16px; font-weight: 600;
+  color: var(--rmuts-navy);
+  margin-bottom: 4px;
+}
+
+/* ── Dropzone ───────────────────────────────────────────────── */
+.rmuts-dropzone {
+  border: 2px dashed var(--rmuts-border-md);
+  border-radius: var(--rmuts-radius-lg);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #FAFBFC;
+}
+.rmuts-dropzone:hover, .rmuts-dropzone--active {
+  border-color: var(--rmuts-navy);
+  background: var(--rmuts-navy-light);
+}
+.rmuts-dropzone--done {
+  border-color: var(--rmuts-success);
+  background: var(--rmuts-success-bg);
+}
+
+/* ── Progress Steps ─────────────────────────────────────────── */
+.rmuts-steps {
+  display: flex; align-items: center;
+  margin-bottom: 32px;
+}
+.rmuts-step-circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center;
+  justify-content: center;
+  font-weight: 600; font-size: 13px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.rmuts-step-circle--done   { background: var(--rmuts-success); color: white; }
+.rmuts-step-circle--active { background: var(--rmuts-navy); color: white; }
+.rmuts-step-circle--wait   { background: #ECF0F1; color: #95A5A6; }
+.rmuts-step-line {
+  flex: 1; height: 3px;
+  margin-bottom: 16px;
+  transition: background 0.3s;
+}
+.rmuts-step-line--done { background: var(--rmuts-success); }
+.rmuts-step-line--wait { background: #ECF0F1; }
+.rmuts-step-label {
+  font-size: 10px; color: var(--rmuts-text-3);
+  text-align: center; white-space: nowrap;
+  margin-top: 4px;
+}
+
+/* ── Info Box ───────────────────────────────────────────────── */
+.rmuts-info-box {
+  background: var(--rmuts-info-bg);
+  color: #1A5276;
+  border-radius: var(--rmuts-radius-md);
+  padding: 12px 16px;
+  font-size: 13px; line-height: 1.6;
+  margin-bottom: 16px;
+}
+.rmuts-section-box {
+  background: #FAFBFC;
+  border: 1px solid var(--rmuts-border);
+  border-radius: var(--rmuts-radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.rmuts-section-box__title {
+  font-size: 13px; font-weight: 600;
+  color: var(--rmuts-text-1);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rmuts-border);
+}
+
+/* ── ป้องกัน Navbar ทับหน้า ─────────────────────────────────── */
+.rmuts-page__body {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+  width: 100%;
+}
+
+/* ── Upgrade: card กับ shadow เพิ่มเติม ─────────────────────── */
+.rmuts-card {
+  background: var(--rmuts-surface);
+  border-radius: var(--rmuts-radius-lg);
+  padding: 20px 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03);
+  border: 1px solid var(--rmuts-border);
+  margin-bottom: 20px;
+  transition: box-shadow 0.2s;
+}
+.rmuts-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.09), 0 0 0 1px rgba(26,47,110,0.06);
+}
+
+/* ── Official government feel ───────────────────────────────── */
+.rmuts-table thead tr {
+  background: linear-gradient(90deg, #0d1e4a, #1a2f6e);
+}
+.rmuts-table thead th {
+  padding: 12px 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  font-size: 13px;
+}
+.rmuts-table tbody tr:hover {
+  background: #F0F4FF;
+}
+
+/* ── Button upgrade ──────────────────────────────────────────── */
+.rmuts-btn--primary {
+  background: linear-gradient(135deg, #0d1e4a, #1a2f6e);
+  box-shadow: 0 2px 8px rgba(13,30,74,0.2);
+}
+.rmuts-btn--primary::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #c47f00, #F5A800, #c47f00);
+}
+.rmuts-btn--gold {
+  background: linear-gradient(135deg, #e69a00, #F5A800);
+  box-shadow: 0 2px 8px rgba(245,168,0,0.25);
+}
+
+/* ── Alert upgrade ───────────────────────────────────────────── */
+.rmuts-alert {
+  border-left: 4px solid currentColor;
+  border-radius: 0 var(--rmuts-radius-md) var(--rmuts-radius-md) 0;
+}
