@@ -11,9 +11,28 @@ const transporter = nodemailer.createTransport({
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS, // Gmail: ใช้ App Password ไม่ใช่รหัสผ่านจริง
     },
+    // อีเมลถูกส่งแบบ fire-and-forget: ถ้า SMTP ค้างแล้วไม่มี timeout สั้น ๆ (ค่าเริ่มต้นของ nodemailer นานถึงนาที)
+    // คำขอที่รออยู่จะสะสมในหน่วยความจำ จึงตั้งเพดานเวลา และใช้ pool เพื่อใช้การเชื่อมต่อซ้ำ
+    pool: true,
+    maxConnections: 3,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
 });
 
 const FROM = `"ระบบทดสอบมาตรฐานฝีมือแรงงาน" <${process.env.SMTP_USER}>`;
+
+// วันที่แบบไทยสำหรับอีเมล: รับสตริง 'YYYY-MM-DD' (คอลัมน์ DATE) หรือ Date
+// เดิมส่ง Date ตรง ๆ เข้า escapeHtml ทำให้อีเมลขึ้นข้อความอย่าง "Sat Jul 18 2026 00:00:00 GMT+0700 (Indochina Time)"
+function formatThaiDate(value) {
+    if (!value) return '';
+    const text = value instanceof Date && !Number.isNaN(value.getTime())
+        ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+        : String(value).slice(0, 10);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00Z`) : null;
+    if (!date || Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeZone: 'UTC' }).format(date);
+}
 
 // ── Template Helper ───────────────────────────────────────────────────────────
 function wrapHTML(title, content) {
@@ -76,8 +95,8 @@ async function sendDocumentVerificationEmail({ to, full_name, status, note, stud
         from: FROM,
         to,
         subject: isApproved
-            ? `✅ เอกสารของท่านได้รับการอนุมัติแล้ว — รหัส ${escapeHtml(student_code)}`
-            : `⚠️ กรุณาส่งเอกสารเพิ่มเติม — รหัส ${escapeHtml(student_code)}`,
+            ? `✅ เอกสารของท่านได้รับการอนุมัติแล้ว — รหัส ${student_code}`
+            : `⚠️ กรุณาส่งเอกสารเพิ่มเติม — รหัส ${student_code}`,
         html: wrapHTML('ผลการตรวจสอบเอกสาร', content),
     });
     console.log(`📧 [Email] ส่งผลตรวจสอบเอกสาร → ${to}`);
@@ -85,21 +104,23 @@ async function sendDocumentVerificationEmail({ to, full_name, status, note, stud
 
 // ── 2. แจ้งผลคะแนนสอบ ────────────────────────────────────────────────────────
 async function sendScoreResultEmail({ to, full_name, student_code, course_name,
-        theory_score, practical_score, total_score, department_status }) {
+        theory_score, practical_score, theory_max_score = 30, practical_max_score = 70,
+        total_score, department_status, corrected = false }) {
     const isPassed = department_status === 'ได้รับวุฒิบัตร';
+    const maxTotal = Number(theory_max_score) + Number(practical_max_score);
     const badge = isPassed
         ? `<span class="badge badge-green">🏆 ได้รับวุฒิบัตร</span>`
         : `<span class="badge badge-red">❌ ไม่ได้รับวุฒิบัตร</span>`;
 
     const content = `
         <p>เรียน คุณ<strong>${escapeHtml(full_name)}</strong></p>
-        <p>ผลการทดสอบมาตรฐานฝีมือแรงงานของท่านมีดังนี้</p>
+        <p>${corrected ? 'ผลการทดสอบมาตรฐานฝีมือแรงงานของท่านได้รับการ<strong>แก้ไข</strong>โดยผู้ดูแลระบบ ผลล่าสุดมีดังนี้' : 'ผลการทดสอบมาตรฐานฝีมือแรงงานของท่านมีดังนี้'}</p>
         <div class="info-box">
             <div class="info-row"><span class="info-label">รหัสผู้สมัคร</span><span class="info-value">${escapeHtml(student_code)}</span></div>
             <div class="info-row"><span class="info-label">สาขาวิชา</span><span class="info-value">${escapeHtml(course_name)}</span></div>
-            <div class="info-row"><span class="info-label">ภาคทฤษฎี (เต็ม 30)</span><span class="info-value">${escapeHtml(theory_score)} คะแนน</span></div>
-            <div class="info-row"><span class="info-label">ภาคปฏิบัติ (เต็ม 70)</span><span class="info-value">${escapeHtml(practical_score)} คะแนน</span></div>
-            <div class="info-row"><span class="info-label">คะแนนรวม</span><span class="info-value" style="font-size:18px;color:#1F4E6B">${escapeHtml(total_score)} / 100</span></div>
+            <div class="info-row"><span class="info-label">ภาคทฤษฎี (เต็ม ${escapeHtml(Number(theory_max_score))})</span><span class="info-value">${escapeHtml(theory_score)} คะแนน</span></div>
+            <div class="info-row"><span class="info-label">ภาคปฏิบัติ (เต็ม ${escapeHtml(Number(practical_max_score))})</span><span class="info-value">${escapeHtml(practical_score)} คะแนน</span></div>
+            <div class="info-row"><span class="info-label">คะแนนรวม</span><span class="info-value" style="font-size:18px;color:#1F4E6B">${escapeHtml(total_score)} / ${escapeHtml(maxTotal)}</span></div>
             <div class="info-row"><span class="info-label">ผลการประเมิน</span><span>${badge}</span></div>
         </div>
         ${isPassed
@@ -111,9 +132,9 @@ async function sendScoreResultEmail({ to, full_name, student_code, course_name,
     await transporter.sendMail({
         from: FROM,
         to,
-        subject: isPassed
-            ? `🏆 ผลสอบ: ท่านผ่านเกณฑ์ — ${escapeHtml(course_name)}`
-            : `📋 ผลสอบ: ${escapeHtml(course_name)} — ${escapeHtml(student_code)}`,
+        subject: `${corrected ? '✏️ แก้ไขผลสอบ: ' : ''}${isPassed
+            ? `🏆 ผลสอบ: ท่านผ่านเกณฑ์ — ${course_name}`
+            : `📋 ผลสอบ: ${course_name} — ${student_code}`}`,
         html: wrapHTML('ผลการทดสอบมาตรฐาน', content),
     });
     console.log(`📧 [Email] ส่งผลคะแนน → ${to}`);
@@ -135,7 +156,7 @@ async function sendNewApplicationAlert({ to, student_name, student_code, applica
     await transporter.sendMail({
         from: FROM,
         to,
-        subject: `📋 มีใบสมัครสอบใหม่รออนุมัติ — ${escapeHtml(student_name)}`,
+        subject: `📋 มีใบสมัครสอบใหม่รออนุมัติ — ${student_name}`,
         html: wrapHTML('แจ้งเตือนใบสมัครใหม่', content),
     });
     console.log(`📧 [Email] แจ้งเตือนอาจารย์ → ${to}`);
@@ -152,7 +173,7 @@ async function sendExamApplicationReceivedEmail({
             <div class="info-row"><span class="info-label">รหัสผู้สมัคร</span><span class="info-value">${escapeHtml(student_code)}</span></div>
             <div class="info-row"><span class="info-label">เลขที่ใบสมัคร</span><span class="info-value">${escapeHtml(application_no)}</span></div>
             <div class="info-row"><span class="info-label">วิชาสอบ</span><span class="info-value">${escapeHtml(course_name)}</span></div>
-            ${exam_date ? `<div class="info-row"><span class="info-label">วันที่สอบ</span><span class="info-value">${escapeHtml(exam_date)}</span></div>` : ''}
+            ${exam_date ? `<div class="info-row"><span class="info-label">วันที่สอบ</span><span class="info-value">${escapeHtml(formatThaiDate(exam_date))}</span></div>` : ''}
             ${exam_time ? `<div class="info-row"><span class="info-label">เวลา</span><span class="info-value">${escapeHtml(exam_time)}</span></div>` : ''}
             ${exam_location ? `<div class="info-row"><span class="info-label">สถานที่</span><span class="info-value">${escapeHtml(exam_location)}</span></div>` : ''}
         </div>
@@ -162,7 +183,7 @@ async function sendExamApplicationReceivedEmail({
     await transporter.sendMail({
         from: FROM,
         to,
-        subject: `ได้รับใบสมัครสอบแล้ว — ${escapeHtml(course_name)} (${escapeHtml(application_no)})`,
+        subject: `ได้รับใบสมัครสอบแล้ว — ${course_name} (${application_no})`,
         html: wrapHTML('ได้รับใบสมัครสอบแล้ว', content),
     });
 }
@@ -183,7 +204,7 @@ async function sendExamApplicationStatusEmail({
             <div class="info-row"><span class="info-label">เลขที่ใบสมัคร</span><span class="info-value">${escapeHtml(application_no)}</span></div>
             <div class="info-row"><span class="info-label">วิชาสอบ</span><span class="info-value">${escapeHtml(course_name)}</span></div>
             <div class="info-row"><span class="info-label">ผลการพิจารณา</span><span>${badge}</span></div>
-            ${isApproved && exam_date ? `<div class="info-row"><span class="info-label">วันที่สอบ</span><span class="info-value">${escapeHtml(exam_date)}</span></div>` : ''}
+            ${isApproved && exam_date ? `<div class="info-row"><span class="info-label">วันที่สอบ</span><span class="info-value">${escapeHtml(formatThaiDate(exam_date))}</span></div>` : ''}
             ${isApproved && exam_time ? `<div class="info-row"><span class="info-label">เวลา</span><span class="info-value">${escapeHtml(exam_time)}</span></div>` : ''}
             ${isApproved && exam_location ? `<div class="info-row"><span class="info-label">สถานที่</span><span class="info-value">${escapeHtml(exam_location)}</span></div>` : ''}
         </div>
@@ -196,8 +217,8 @@ async function sendExamApplicationStatusEmail({
         from: FROM,
         to,
         subject: isApproved
-            ? `✅ อนุมัติสิทธิ์สอบแล้ว — ${escapeHtml(course_name)}`
-            : `ผลการพิจารณาใบสมัครสอบ — ${escapeHtml(course_name)}`,
+            ? `✅ อนุมัติสิทธิ์สอบแล้ว — ${course_name}`
+            : `ผลการพิจารณาใบสมัครสอบ — ${course_name}`,
         html: wrapHTML('ผลการพิจารณาใบสมัครสอบ', content),
     });
 }
@@ -243,6 +264,7 @@ async function sendEmailVerification({ to, token }) {
 }
 
 module.exports = {
+    _formatThaiDate: formatThaiDate,
     sendDocumentVerificationEmail,
     sendScoreResultEmail,
     sendNewApplicationAlert,

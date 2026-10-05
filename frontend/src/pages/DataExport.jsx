@@ -2,17 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API, { downloadAuthenticated } from '../services/api';
 import RmutsNavbar from '../components/RmutsNavbar';
+import { formatThaiDate } from '../utils/dates';
 import '../styles/theme.css';
 
 const box = { background:'#fff', border:'1px solid #dce3ee', borderRadius:12, boxShadow:'0 2px 10px rgba(20,45,90,.06)' };
 const input = { width:'100%', boxSizing:'border-box', padding:'10px 11px', border:'1px solid #cdd8e8', borderRadius:7, background:'#fff' };
 const button = { border:0, borderRadius:7, padding:'10px 15px', cursor:'pointer', fontWeight:700 };
-const emptyFilters = { date_type:'registered', date_from:'', date_to:'', course_id:'', session_id:'', attempt_no:'', application_status:'', exam_status:'', student_status:'', result:'', search:'', include_sensitive:false };
-const fmt = date => date ? new Intl.DateTimeFormat('th-TH',{ dateStyle:'medium' }).format(new Date(date)) : '-';
+const emptyFilters = { date_type:'registered', date_from:'', date_to:'', course_id:'', session_id:'', attempt_no:'', application_status:'', exam_status:'', student_status:'', result:'', search:'' };
+const fmt = date => formatThaiDate(date, { dateStyle:'medium' }, '-');
 
 const DataExport = () => {
   const navigate = useNavigate();
-  const role = localStorage.getItem('role') || '';
   const [options, setOptions] = useState({ courses:[], sessions:[], range:{} });
   const [filters, setFilters] = useState(emptyFilters);
   const [preview, setPreview] = useState([]);
@@ -33,10 +33,9 @@ const DataExport = () => {
   }), [options.sessions, filters.course_id]);
   const maxAttempts = Math.max(1, Number(options.range?.max_attempt_no || 1));
 
-  const params = (includeSensitive=false) => {
+  const params = () => {
     const result = new URLSearchParams();
-    Object.entries(filters).forEach(([key,item]) => { if (key !== 'include_sensitive' && item) result.set(key,String(item)); });
-    if (includeSensitive && role === 'admin' && filters.include_sensitive) result.set('include_sensitive','1');
+    Object.entries(filters).forEach(([key,item]) => { if (item) result.set(key,String(item)); });
     return result;
   };
   const search = async (event) => {
@@ -50,7 +49,7 @@ const DataExport = () => {
   const exportFile = async () => {
     setExporting(true); setMessage('');
     try {
-      await downloadAuthenticated('/export/registrations.xlsx?' + params(true),'student_exam_records.xlsx');
+      await downloadAuthenticated('/export/registrations.xlsx?' + params(),'student_exam_records.xlsx');
       setMessage('ส่งออกไฟล์ Excel สำเร็จ' + (total ? ' จากข้อมูลที่พบ ' + total.toLocaleString('th-TH') + ' รายการ' : ''));
     } catch (err) { setMessage('ไม่สามารถส่งออกไฟล์ได้ กรุณาตรวจตัวกรองและลองใหม่'); }
     finally { setExporting(false); }
@@ -84,10 +83,6 @@ const DataExport = () => {
           <label><div style={{fontSize:13,marginBottom:5}}>ผลสอบ</div><select style={input} value={filters.result} onChange={e=>change('result',e.target.value)}><option value="">ทุกผล</option><option value="passed">ผ่าน/ได้รับวุฒิบัตร</option><option value="failed">ไม่ผ่าน</option><option value="pending">รอประกาศผล</option></select></label>
           <label style={{gridColumn:'span 2'}}><div style={{fontSize:13,marginBottom:5}}>ค้นหาเฉพาะบุคคลหรือใบสมัคร</div><input style={input} value={filters.search} onChange={e=>change('search',e.target.value)} placeholder="ชื่อ รหัสนักศึกษา เลขใบสมัคร อีเมล หรือโทรศัพท์"/></label>
         </div>
-        {role==='admin' && <label style={{ display:'flex', gap:9, alignItems:'flex-start', marginTop:15, color:'#8a3f16' }}>
-          <input type="checkbox" checked={filters.include_sensitive} onChange={e=>change('include_sensitive',e.target.checked)} style={{marginTop:3}}/>
-          <span><b>ส่งออกเลขบัตรประชาชนเต็ม</b><br/><small>ใช้เฉพาะเมื่อจำเป็นตามหน้าที่และจัดเก็บไฟล์ในพื้นที่ปลอดภัย (staff ไม่มีสิทธิ์นี้)</small></span>
-        </label>}
         <div style={{ display:'flex', justifyContent:'space-between', gap:10, marginTop:18, flexWrap:'wrap' }}>
           <div style={{display:'flex',gap:8}}><button type="submit" disabled={loading} style={{...button,background:'#1a2f6e',color:'#fff'}}>{loading?'กำลังค้นหา...':'🔎 แสดงตัวอย่าง'}</button><button type="button" onClick={reset} style={{...button,background:'#e9eef5',color:'#334155'}}>ล้างตัวกรอง</button></div>
           <button type="button" onClick={exportFile} disabled={exporting} style={{...button,background:'#f5a800',color:'#172a5b'}}>{exporting?'กำลังสร้างไฟล์...':'⬇ ส่งออก .xlsx'}</button>

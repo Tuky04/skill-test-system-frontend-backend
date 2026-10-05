@@ -1,5 +1,7 @@
 const express = require('express');
-const router = express.Router();
+const { withAsyncErrors } = require('../utils/asyncRoutes');
+// ทุก handler ที่เป็น async จะส่ง error เข้า error middleware แทนการทำให้โปรเซสล่ม
+const router = withAsyncErrors(express.Router());
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const { handleUpload } = require('../middleware/upload');
 
@@ -49,6 +51,8 @@ router.get('/registrations', verifyToken, requireRole('staff'), student.getAllRe
 router.put('/registrations/:registration_id/status', verifyToken, requireRole('staff'), student.updateRegistrationStatus);
 router.put('/registrations/:registration_id/exam-status', verifyToken, requireRole('staff'), student.updateExamStatus);
 router.post('/scores/submit', verifyToken, requireRole('staff'), score.submitScores);
+router.get('/admin/scores/published', verifyToken, requireRole('admin'), score.listPublishedResults);
+router.post('/admin/scores/correct', verifyToken, requireRole('admin'), score.correctScore);
 
 router.get('/staff/pending-registrations', verifyToken, requireRole('staff'), registration.getPendingRegistrations);
 router.put('/staff/students/:id/verify', verifyToken, requireRole('staff'), registration.verifyStudent);

@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
-import API from '../../services/api';
+import API, { refreshSession } from '../../services/api';
 import Login from '../Login';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
@@ -21,6 +21,7 @@ jest.mock('axios', () => ({
 jest.mock('../../services/api', () => ({
   __esModule: true,
   default: { post: jest.fn() },
+  refreshSession: jest.fn(),
 }));
 
 const destinations = {
@@ -64,7 +65,10 @@ describe('login and role routing', () => {
       password: 'safe-password',
     });
     expect(sessionStorage.getItem('token')).toBe(`${role}-access-token`);
-    expect(localStorage.getItem('role')).toBe(role);
+    expect(sessionStorage.getItem('role')).toBe(role);
+    // role/user ไม่ถูกเก็บถาวรใน localStorage (เครื่องส่วนกลางจะไม่มีข้อมูลตกค้างหลังปิดเบราว์เซอร์)
+    expect(localStorage.getItem('role')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
     expect(await screen.findByText(`${role} home`)).toBeInTheDocument();
   });
 });
@@ -72,7 +76,7 @@ describe('login and role routing', () => {
 describe('ProtectedRoute role separation', () => {
   test('allows the configured role', () => {
     sessionStorage.setItem('token', 'valid-token');
-    localStorage.setItem('role', 'staff');
+    sessionStorage.setItem('role', 'staff');
 
     render(
       <MemoryRouter initialEntries={['/staff-only']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -91,7 +95,7 @@ describe('ProtectedRoute role separation', () => {
     ['admin', '/admin-report', 'admin home'],
   ])('redirects unauthorized %s users to their own home', (role, home, marker) => {
     sessionStorage.setItem('token', 'valid-token');
-    localStorage.setItem('role', role);
+    sessionStorage.setItem('role', role);
 
     render(
       <MemoryRouter initialEntries={['/admin-only']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -106,7 +110,8 @@ describe('ProtectedRoute role separation', () => {
     expect(screen.queryByText('secret')).not.toBeInTheDocument();
   });
 
-  test('redirects a visitor without an access token to login', () => {
+  test('redirects a visitor without an access token to login when no refresh session exists', async () => {
+    refreshSession.mockRejectedValue({ response: { status: 401 } });
     render(
       <MemoryRouter initialEntries={['/staff-only']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
@@ -116,6 +121,25 @@ describe('ProtectedRoute role separation', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('login page')).toBeInTheDocument();
+    expect(await screen.findByText('login page')).toBeInTheDocument();
+    expect(screen.queryByText('secret')).not.toBeInTheDocument();
+  });
+
+  test('restores the session from the refresh cookie when this tab has no token', async () => {
+    refreshSession.mockImplementation(async () => {
+      sessionStorage.setItem('token', 'restored-token');
+      sessionStorage.setItem('role', 'staff');
+      return { token: 'restored-token', role: 'staff' };
+    });
+    render(
+      <MemoryRouter initialEntries={['/staff-only']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/staff-only" element={<ProtectedRoute allowedRoles={['staff']}><div>staff content</div></ProtectedRoute>} />
+          <Route path="/login" element={<div>login page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('staff content')).toBeInTheDocument();
+    expect(refreshSession).toHaveBeenCalledTimes(1);
   });
 });

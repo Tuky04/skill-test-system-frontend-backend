@@ -3,19 +3,26 @@ import RmutsNavbar from '../components/RmutsNavbar';
 import API from '../services/api';
 import '../styles/theme.css';
 import { goTo } from '../utils/navigation';
+import { formatThaiDateTime } from '../utils/dates';
+import { passwordProblem } from '../utils/password';
 
 const ROLE_LABEL = { admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่/อาจารย์', student:'นักศึกษา' };
 const ROLE_COLOR = { admin:'#3730A3', staff:'#92400E', student:'#065F46' };
 const ROLE_BG    = { admin:'#EEF2FF',  staff:'#FEF3C7',  student:'#ECFDF5' };
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+const fmtDate = d => formatThaiDateTime(d);
+const PAGE_SIZE = 25;
 
 const UserManagement = () => {
     const [users, setUsers]         = useState([]);
     const [loading, setLoading]     = useState(true);
     const [search, setSearch]       = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
+    const [page, setPage]           = useState(1);
+    const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+    const [summary, setSummary]     = useState(null);
     const [msg, setMsg]             = useState('');
     const [msgType, setMsgType]     = useState('success');
 
@@ -30,18 +37,28 @@ const UserManagement = () => {
         setTimeout(() => setMsg(''), 4000);
     };
 
+    // รอผู้ใช้พิมพ์เสร็จก่อนค่อยค้นหา (เดิมยิง API ทุกตัวอักษร)
+    useEffect(() => {
+        const timer = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const params = new URLSearchParams();
-            if (search)       params.append('search',    search);
+            const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+            if (debouncedSearch) params.append('search',    debouncedSearch);
             if (roleFilter)   params.append('role',      roleFilter);
             if (activeFilter !== '') params.append('is_active', activeFilter);
             const res = await API.get(`/admin/users?${params}`);
-            if (res.data.success) setUsers(res.data.data);
+            if (res.data.success) {
+                setUsers(res.data.data);
+                setPagination(res.data.pagination || { page, pages: 1, total: res.data.data.length });
+                setSummary(res.data.summary || null);
+            }
         } catch { showMsg('โหลดข้อมูลไม่สำเร็จ','error'); }
         finally { setLoading(false); }
-    }, [search, roleFilter, activeFilter]);
+    }, [debouncedSearch, roleFilter, activeFilter, page]);
 
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -55,7 +72,8 @@ const UserManagement = () => {
     };
 
     const handleResetPass = async () => {
-        if (!newPass || newPass.length < 8) { showMsg('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร','error'); return; }
+        const problem = passwordProblem(newPass);
+        if (problem) { showMsg(problem,'error'); return; }
         if (newPass !== confirmPass) { showMsg('รหัสผ่านไม่ตรงกัน','error'); return; }
         try {
             setModalLoading(true);
@@ -76,8 +94,9 @@ const UserManagement = () => {
         } catch (err) { showMsg(err.response?.data?.message || 'เกิดข้อผิดพลาด','error'); }
     };
 
-    const stats = {
-        total:   users.length,
+    // ตัวเลขสรุปมาจากทั้งระบบ (ไม่ใช่นับจากแถวในหน้าที่เปิดอยู่ ซึ่งผิดทันทีเมื่อมีผู้ใช้เกินหนึ่งหน้า)
+    const stats = summary || {
+        total:   pagination.total,
         active:  users.filter(u => u.is_active).length,
         disabled:users.filter(u => !u.is_active).length,
         admin:   users.filter(u => u.role==='admin').length,
@@ -121,19 +140,19 @@ const UserManagement = () => {
                     <input className="rmuts-search" style={{ flex:1, minWidth:200 }}
                         placeholder="🔍 ค้นหาชื่อ, username, email, รหัสนักศึกษา..."
                         value={search} onChange={e=>setSearch(e.target.value)}/>
-                    <select className="rmuts-select" style={{ width:160 }} value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}>
+                    <select className="rmuts-select" style={{ width:160 }} value={roleFilter} onChange={e=>{ setRoleFilter(e.target.value); setPage(1); }}>
                         <option value="">ทุก Role</option>
                         <option value="admin">ผู้ดูแลระบบ</option>
                         <option value="staff">เจ้าหน้าที่</option>
                         <option value="student">นักศึกษา</option>
                     </select>
-                    <select className="rmuts-select" style={{ width:150 }} value={activeFilter} onChange={e=>setActiveFilter(e.target.value)}>
+                    <select className="rmuts-select" style={{ width:150 }} value={activeFilter} onChange={e=>{ setActiveFilter(e.target.value); setPage(1); }}>
                         <option value="">ทุกสถานะ</option>
                         <option value="1">ใช้งานได้</option>
                         <option value="0">ปิดใช้งาน</option>
                     </select>
                     {(search||roleFilter||activeFilter!=='') && (
-                        <button onClick={()=>{setSearch('');setRoleFilter('');setActiveFilter('');}} style={{ padding:'7px 12px', background:'#FADBD8', color:'#78281F', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:600 }}>✕ ล้าง</button>
+                        <button onClick={()=>{setSearch('');setDebouncedSearch('');setRoleFilter('');setActiveFilter('');setPage(1);}} style={{ padding:'7px 12px', background:'#FADBD8', color:'#78281F', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:600 }}>✕ ล้าง</button>
                     )}
                 </div>
 
@@ -202,6 +221,14 @@ const UserManagement = () => {
                     )}
                 </div>
 
+                {pagination.pages > 1 && (
+                    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:12, marginTop:14 }}>
+                        <button className="rmuts-btn rmuts-btn--outline rmuts-btn--sm" disabled={page <= 1 || loading} onClick={()=>setPage(p=>Math.max(1,p-1))}>← ก่อนหน้า</button>
+                        <span style={{ fontSize:13, color:'#64748b' }}>หน้า {pagination.page} / {pagination.pages} · ทั้งหมด {Number(pagination.total).toLocaleString('th-TH')} บัญชี</span>
+                        <button className="rmuts-btn rmuts-btn--outline rmuts-btn--sm" disabled={page >= pagination.pages || loading} onClick={()=>setPage(p=>p+1)}>ถัดไป →</button>
+                    </div>
+                )}
+
                 {/* Modal Reset Password */}
                 {resetModal && (
                     <div className="rmuts-overlay" onClick={()=>setResetModal(null)}>
@@ -255,7 +282,7 @@ const UserManagement = () => {
 
                             <div style={{ display:'flex', gap:10 }}>
                                 <button className="rmuts-btn rmuts-btn--outline" style={{ flex:1 }} onClick={()=>setResetModal(null)}>ยกเลิก</button>
-                                <button disabled={modalLoading || newPass !== confirmPass || newPass.length < 8}
+                                <button disabled={modalLoading || newPass !== confirmPass || Boolean(passwordProblem(newPass))}
                                     onClick={handleResetPass}
                                     style={{ flex:2, padding:12, background: modalLoading||newPass!==confirmPass||newPass.length<8 ? '#94a3b8' : 'linear-gradient(135deg,#0d1e4a,#1a2f6e)', color:'white', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:600 }}>
                                     {modalLoading ? '⏳ กำลังรีเซ็ต...' : '🔑 ยืนยันรีเซ็ตรหัสผ่าน'}

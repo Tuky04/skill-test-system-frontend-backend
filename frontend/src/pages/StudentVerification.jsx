@@ -14,6 +14,7 @@ const StudentVerification = () => {
     const [msgType, setMsgType]       = useState('success');
     const [search, setSearch]         = useState('');
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewType, setPreviewType] = useState('');
     const [previewTitle, setPreviewTitle] = useState('');
 
     const showMsg = useCallback((text, type='success') => { setMsg(text); setMsgType(type); setTimeout(()=>setMsg(''),4000); }, []);
@@ -41,6 +42,8 @@ const StudentVerification = () => {
         try {
             const response = await API.get(`/documents/${encodeURIComponent(filename)}`, { responseType:'blob' });
             setPreviewUrl((oldUrl) => { if (oldUrl) URL.revokeObjectURL(oldUrl); return URL.createObjectURL(response.data); });
+            // blob URL ไม่มีนามสกุลไฟล์ จึงตัดสินว่าเป็น PDF จากชนิดไฟล์ที่เซิร์ฟเวอร์ส่งมา (เดิมเช็ค '.pdf' ใน URL ทำให้ PDF แสดงเป็นรูปเสีย)
+            setPreviewType(String(response.data?.type || response.headers?.['content-type'] || ''));
             setPreviewTitle(title);
         } catch (error) {
             showMsg(error.response?.data?.message || 'ไม่สามารถเปิดเอกสารได้', 'error');
@@ -182,7 +185,7 @@ const StudentVerification = () => {
                                     <button className="rmuts-btn rmuts-btn--danger rmuts-btn--sm" onClick={()=>setPreviewUrl(null)}>✕ ปิด</button>
                                 </div>
                             </div>
-                            {previewUrl.toLowerCase().includes('.pdf')
+                            {previewType.toLowerCase().includes('pdf')
                                 ? <iframe src={previewUrl} style={{ width:'100%', height:560, border:'none', borderRadius:8 }} title="document"/>
                                 : <img src={previewUrl} alt="document" style={{ maxWidth:'100%', borderRadius:8, display:'block', margin:'0 auto' }}/>
                             }

@@ -1,24 +1,6 @@
 const db = require('../config/db');
 const { APPLICATION_STATUS, STUDENT_STATUS } = require('../utils/domain');
 
-exports.getReport1 = async (req, res) => {
-    try {
-        const [rows] = await db.query(
-            `SELECT r.application_no, r.application_status, r.attempt_no,
-                    s.student_code, s.university_student_code, s.title, s.full_name, c.course_name,
-                    sc.total_score, sc.department_status, r.result_published_at
-             FROM registrations r
-             JOIN students s ON r.student_id = s.student_id
-             JOIN exam_courses c ON r.course_id = c.course_id
-             LEFT JOIN scores sc ON r.registration_id = sc.registration_id
-             ORDER BY s.student_code, r.attempt_no`
-        );
-        return res.json({ success: true, data: rows });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'ไม่สามารถสร้างรายงานได้' });
-    }
-};
-
 exports.getStats = async (req, res) => {
     try {
         const [[studentStats]] = await db.query(

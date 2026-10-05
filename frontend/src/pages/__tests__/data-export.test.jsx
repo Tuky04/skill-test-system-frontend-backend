@@ -37,7 +37,7 @@ const previewRow = {
 };
 
 test('filters preview data and exports Excel with the same parameters', async () => {
-  localStorage.setItem('role', 'staff');
+  sessionStorage.setItem('role', 'staff');
   API.get.mockImplementation((path) => {
     if (path === '/staff/export/options') return Promise.resolve({ data: { data: options } });
     return Promise.resolve({ data: { data: [previewRow], total: 1 } });

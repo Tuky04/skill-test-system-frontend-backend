@@ -3,9 +3,27 @@ import RmutsNavbar from '../components/RmutsNavbar';
 import API from '../services/api';
 import '../styles/theme.css';
 import { goTo } from '../utils/navigation';
+import { getUser } from '../services/session';
+import { formatThaiDate } from '../utils/dates';
 
 const PER_PAGE = 10;
-const fmtExamDate = value => value ? new Date(value).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}) : 'ยังไม่กำหนด';
+// API คืนใบสมัครได้ครั้งละไม่เกิน 100 รายการ: ต้องดึงให้ครบทุกหน้า มิฉะนั้นใบสมัครที่เก่ากว่า 100 รายการล่าสุดจะหายจากหน้าจอ
+// (เดิมดึงหน้าเดียว เจ้าหน้าที่จึงอนุมัติ/บันทึกคะแนนรายการเก่าไม่ได้เมื่อมีใบสมัครเกิน 100)
+const REGISTRATION_PAGE_SIZE = 100;
+const REGISTRATION_MAX_PAGES = 30;
+const fetchAllRegistrations = async () => {
+    const first = await API.get('/registrations', { params: { limit: REGISTRATION_PAGE_SIZE, page: 1 } });
+    if (!first.data?.success) return { ok: false, data: [], total: 0 };
+    let data = first.data.data || [];
+    const total = Number(first.data.total ?? data.length);
+    const pages = Math.min(REGISTRATION_MAX_PAGES, Math.ceil(total / REGISTRATION_PAGE_SIZE));
+    if (pages > 1) {
+        const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => API.get('/registrations', { params: { limit: REGISTRATION_PAGE_SIZE, page: index + 2 } })));
+        rest.forEach((response) => { data = data.concat(response.data?.data || []); });
+    }
+    return { ok: true, data, total };
+};
+const fmtExamDate = value => formatThaiDate(value, undefined, 'ยังไม่กำหนด');
 const fmtExamTime = value => {
     if (!value) return 'ยังไม่กำหนด';
     const text=String(value).trim();
@@ -69,6 +87,7 @@ const GradingPanel = () => {
     const [scoreModalId, setScoreModalId] = useState(null);
     const [pendingDocumentCount, setPendingDocumentCount] = useState(0);
     const [newApplicantPopup, setNewApplicantPopup] = useState(null);
+    const [truncatedTotal, setTruncatedTotal] = useState(0);
 
     // ── ตัวกรอง Tab 1: ใบสมัคร ──
     const [appSearch, setAppSearch]   = useState('');
@@ -89,9 +108,10 @@ const GradingPanel = () => {
     const fetchData = useCallback(async (silent=false) => {
         try {
             if (!silent) setLoading(true);
-            const res = await API.get('/registrations?limit=100');
-            if (res.data.success) {
-                const data = res.data.data;
+            const res = await fetchAllRegistrations();
+            if (res.ok) {
+                const data = res.data;
+                setTruncatedTotal(res.total > data.length ? res.total : 0);
                 setAllApps(data);
                 const app = data.filter(a=>a.application_status==='อนุมัติสิทธิ์สอบ');
                 setApproved(app);
@@ -108,13 +128,14 @@ const GradingPanel = () => {
 
     const fetchPendingDocuments = useCallback(async () => {
         try {
-            const response = await API.get('/staff/pending-registrations');
+            // summary=1: ส่งเฉพาะรหัส/ชื่อ (ไม่มีเลขบัตรและชื่อไฟล์เอกสาร) เพราะ poll ทุก 30 วินาที
+            const response = await API.get('/staff/pending-registrations', { params: { summary: 1 } });
             if (!response.data?.success) return;
-            const pending = (response.data.data || []).filter((item) => item.registration_status === 'รอตรวจสอบเอกสาร');
+            const pending = (response.data.data || []).filter((item) => !item.registration_status || item.registration_status === 'รอตรวจสอบเอกสาร');
             setPendingDocumentCount(pending.length);
 
             let currentUserId = 'staff';
-            try { currentUserId = JSON.parse(localStorage.getItem('user') || '{}').user_id || 'staff'; } catch {}
+            currentUserId = getUser().user_id || 'staff';
             const storageKey = `known_pending_documents_${currentUserId}`;
             let knownIds = [];
             try { knownIds = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch {}
@@ -291,6 +312,7 @@ const GradingPanel = () => {
                     ))}
                 </div>
 
+                {truncatedTotal > 0 && <div className="rmuts-alert rmuts-alert--error">⚠️ แสดง {allApps.length.toLocaleString('th-TH')} จากทั้งหมด {truncatedTotal.toLocaleString('th-TH')} รายการ (เพดานการโหลด) กรุณาใช้เมนู "ส่งออกข้อมูล" เพื่อดูรายการที่เหลือ</div>}
                 {msg && <div className={`rmuts-alert rmuts-alert--${msgType}`}>{msgType==='success'?'✅':'❌'} {msg}</div>}
 
                 {/* Tabs */}

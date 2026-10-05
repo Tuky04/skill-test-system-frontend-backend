@@ -51,7 +51,16 @@ const templates = {
             : `ผลการทดสอบสาขา "${course_name}" ออกแล้ว กรุณาตรวจสอบคะแนนของคุณ`,
         link:    '/student-dashboard',
     }),
+    // ผลสอบถูกแก้ไขโดยผู้ดูแลระบบ
+    score_corrected: (course_name) => ({
+        type:    'score_released',
+        title:   '✏️ มีการแก้ไขผลสอบ',
+        message: `ผลการทดสอบสาขา "${course_name}" ได้รับการแก้ไข กรุณาตรวจสอบคะแนนล่าสุดของคุณ`,
+        link:    '/student-dashboard',
+    }),
 };
+
+const isInvalidId = (id) => !/^\d{1,18}$/.test(String(id));
 
 // ── GET /api/notifications — ดึง notification ของตัวเอง ──────
 exports.getMyNotifications = async (req, res) => {
@@ -68,6 +77,7 @@ exports.getMyNotifications = async (req, res) => {
         );
         res.json({ success: true, data: rows, unread: Number(count.total || 0) });
     } catch (err) {
+        console.error('[Notifications]', err.message);
         res.status(500).json({ success: false, message: 'ไม่สามารถโหลดการแจ้งเตือนได้' });
     }
 };
@@ -76,6 +86,7 @@ exports.getMyNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
     const user_id = req.user?.id || req.user?.user_id;
     const { id }  = req.params;
+    if (isInvalidId(id)) return res.status(400).json({ success: false, message: 'รหัสการแจ้งเตือนไม่ถูกต้อง' });
     try {
         await db.query(
             'UPDATE notifications SET is_read = 1 WHERE notification_id = ? AND user_id = ?',
@@ -83,7 +94,8 @@ exports.markAsRead = async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error('[Notification read]', err.message);
+        res.status(500).json({ success: false, message: 'ไม่สามารถอัปเดตการแจ้งเตือนได้' });
     }
 };
 
@@ -92,12 +104,13 @@ exports.markAllAsRead = async (req, res) => {
     const user_id = req.user?.id || req.user?.user_id;
     try {
         await db.query(
-            'UPDATE notifications SET is_read = 1 WHERE user_id = ?',
+            'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0',
             [user_id]
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error('[Notification read-all]', err.message);
+        res.status(500).json({ success: false, message: 'ไม่สามารถอัปเดตการแจ้งเตือนได้' });
     }
 };
 
@@ -105,6 +118,7 @@ exports.markAllAsRead = async (req, res) => {
 exports.deleteNotification = async (req, res) => {
     const user_id = req.user?.id || req.user?.user_id;
     const { id }  = req.params;
+    if (isInvalidId(id)) return res.status(400).json({ success: false, message: 'รหัสการแจ้งเตือนไม่ถูกต้อง' });
     try {
         await db.query(
             'DELETE FROM notifications WHERE notification_id = ? AND user_id = ?',
@@ -112,7 +126,8 @@ exports.deleteNotification = async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error('[Notification delete]', err.message);
+        res.status(500).json({ success: false, message: 'ไม่สามารถลบการแจ้งเตือนได้' });
     }
 };
 

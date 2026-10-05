@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import API from '../services/api';
 import RmutsNavbar from '../components/RmutsNavbar';
+import { formatThaiDate, formatThaiDateTime } from '../utils/dates';
 import '../styles/theme.css';
 
 const card = { background:'#fff', border:'1px solid #dce3ee', borderRadius:12, boxShadow:'0 2px 10px rgba(20,45,90,.06)', padding:20 };
 const label = { color:'#6b778c', fontSize:12, marginBottom:3 };
 const valueStyle = { color:'#172a5b', fontSize:14, overflowWrap:'anywhere' };
 const button = { border:0, borderRadius:7, padding:'9px 14px', cursor:'pointer', fontWeight:700 };
-const fmt = (date, withTime=false) => date ? new Intl.DateTimeFormat('th-TH', withTime ? { dateStyle:'medium', timeStyle:'short' } : { dateStyle:'medium' }).format(new Date(date)) : '-';
+const fmt = (date, withTime=false) => withTime ? formatThaiDateTime(date, { dateStyle:'medium', timeStyle:'short' }, '-') : formatThaiDate(date, { dateStyle:'medium' }, '-');
 const shown = value => value === null || value === undefined || value === '' ? '-' : value;
 
 const Fields = ({ items }) => <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:'15px 20px' }}>

@@ -10,7 +10,9 @@ const {
     HttpError,
     computeCourseStatus,
     createApplicationNo,
+    hasExamDatePassed,
 } = require('../utils/domain');
+const { getOrCreateSession } = require('../utils/sessions');
 
 exports.getStudentMe = async (req, res) => {
     try {
@@ -71,32 +73,50 @@ exports.getAllRegistrations = async (req, res) => {
 exports.updateRegistrationStatus = async (req, res) => {
     const registrationId = Number(req.params.registration_id);
     const { status } = req.body;
+    if (!Number.isInteger(registrationId) || registrationId <= 0) {
+        return res.status(400).json({ success: false, message: 'เลขใบสมัครไม่ถูกต้อง' });
+    }
     if (![APPLICATION_STATUS.PENDING, APPLICATION_STATUS.APPROVED, APPLICATION_STATUS.REJECTED].includes(status)) {
         return res.status(400).json({ success: false, message: 'สถานะใบสมัครไม่ถูกต้อง' });
     }
-    let conn;
     try {
-        conn = await db.getConnection();
-        await conn.beginTransaction();
-        const [[registration]] = await conn.query(
-            `SELECT r.registration_id, r.application_no, r.application_status, r.exam_status, r.result_published_at,
-                    s.user_id, s.student_code, s.full_name, u.email,
-                    c.course_name, c.exam_date, c.exam_time, c.exam_location
-             FROM registrations r
-             JOIN students s ON r.student_id = s.student_id
-             JOIN users u ON s.user_id = u.user_id
-             JOIN exam_courses c ON r.course_id = c.course_id
-             WHERE r.registration_id = ? FOR UPDATE`,
-            [registrationId]
-        );
-        if (!registration) throw new HttpError(404, 'ไม่พบใบสมัคร');
-        if (registration.result_published_at) throw new HttpError(409, 'ไม่สามารถเปลี่ยนสถานะหลังประกาศผลแล้ว');
-        const nextExamStatus = status === APPLICATION_STATUS.APPROVED ? (registration.exam_status || EXAM_STATUS.WAITING) : EXAM_STATUS.WAITING;
-        await conn.query('UPDATE registrations SET application_status = ?, exam_status = ? WHERE registration_id = ?', [status, nextExamStatus, registrationId]);
-        await conn.commit();
-        logAdminAction({ actorId: req.user.id, action: 'CHANGE_APPLICATION_STATUS', targetType: 'registration', targetId: registrationId, details: { from: registration.application_status, to: status } })
-            .catch((error) => console.error('[Admin audit]', error.message));
+        const outcome = await db.withTransaction(async (conn) => {
+            const [[registration]] = await conn.query(
+                `SELECT r.registration_id, r.course_id, r.application_no, r.application_status, r.exam_status, r.result_published_at,
+                        s.user_id, s.student_code, s.full_name, u.email,
+                        c.course_name, c.exam_date, c.exam_time, c.exam_location, c.max_seats
+                 FROM registrations r
+                 JOIN students s ON r.student_id = s.student_id
+                 JOIN users u ON s.user_id = u.user_id
+                 JOIN exam_courses c ON r.course_id = c.course_id
+                 WHERE r.registration_id = ? FOR UPDATE`,
+                [registrationId]
+            );
+            if (!registration) throw new HttpError(404, 'ไม่พบใบสมัคร');
+            if (registration.result_published_at) throw new HttpError(409, 'ไม่สามารถเปลี่ยนสถานะหลังประกาศผลแล้ว');
+            // กดซ้ำด้วยค่าเดิมต้องไม่ส่งอีเมล/แจ้งเตือนซ้ำให้นักศึกษา
+            if (registration.application_status === status) return { registration, changed: false };
 
+            // ย้ายใบสมัครที่เคยถูกปฏิเสธกลับเข้าระบบ = กลับมากินที่นั่ง ต้องตรวจจำนวนที่นั่งเหมือนการสมัครใหม่
+            // (เดิมข้ามการตรวจนี้ จึงทำให้จำนวนผู้สมัครเกิน max_seats ได้)
+            if (registration.application_status === APPLICATION_STATUS.REJECTED && status !== APPLICATION_STATUS.REJECTED && registration.max_seats) {
+                await conn.query('SELECT course_id FROM exam_courses WHERE course_id = ? FOR UPDATE', [registration.course_id]);
+                const [[seat]] = await conn.query(
+                    'SELECT COUNT(*) AS total FROM registrations WHERE course_id = ? AND application_status <> ? AND registration_id <> ?',
+                    [registration.course_id, APPLICATION_STATUS.REJECTED, registrationId]
+                );
+                if (seat.total >= registration.max_seats) throw new HttpError(409, 'ที่นั่งของวิชานี้เต็มแล้ว ไม่สามารถนำใบสมัครที่ถูกปฏิเสธกลับมาได้');
+            }
+            const nextExamStatus = status === APPLICATION_STATUS.APPROVED ? (registration.exam_status || EXAM_STATUS.WAITING) : EXAM_STATUS.WAITING;
+            await conn.query('UPDATE registrations SET application_status = ?, exam_status = ? WHERE registration_id = ?', [status, nextExamStatus, registrationId]);
+            await logAdminAction({ actorId: req.user.id, action: 'CHANGE_APPLICATION_STATUS', targetType: 'registration', targetId: registrationId, details: { from: registration.application_status, to: status } }, conn);
+            return { registration, changed: true };
+        });
+        if (!outcome.changed) {
+            return res.json({ success: true, unchanged: true, message: `สถานะเป็น "${status}" อยู่แล้ว ไม่มีการเปลี่ยนแปลง` });
+        }
+
+        const { registration } = outcome;
         const template = status === APPLICATION_STATUS.APPROVED
             ? templates.exam_approved(registration.course_name)
             : status === APPLICATION_STATUS.REJECTED
@@ -121,44 +141,44 @@ exports.updateRegistrationStatus = async (req, res) => {
         }
         return res.json({ success: true, message: `เปลี่ยนสถานะเป็น "${status}" เรียบร้อย` });
     } catch (error) {
-        if (conn) await conn.rollback().catch(() => {});
         if (error instanceof HttpError) return res.status(error.status).json({ success: false, message: error.message });
         console.error('[Update registration]', error.message);
         return res.status(500).json({ success: false, message: 'ไม่สามารถเปลี่ยนสถานะใบสมัครได้' });
-    } finally {
-        if (conn) conn.release();
     }
 };
 
 exports.updateExamStatus = async (req, res) => {
     const registrationId = Number(req.params.registration_id);
     const { status } = req.body;
+    if (!Number.isInteger(registrationId) || registrationId <= 0) {
+        return res.status(400).json({ success: false, message: 'เลขใบสมัครไม่ถูกต้อง' });
+    }
     if (![EXAM_STATUS.WAITING, EXAM_STATUS.ATTENDED, EXAM_STATUS.ABSENT, EXAM_STATUS.CANCELLED].includes(status)) {
         return res.status(400).json({ success: false, message: 'สถานะการเข้าสอบไม่ถูกต้อง' });
     }
-    let conn;
     try {
-        conn = await db.getConnection();
-        await conn.beginTransaction();
-        const [[registration]] = await conn.query(
-            'SELECT registration_id, application_status, exam_status, result_published_at FROM registrations WHERE registration_id = ? FOR UPDATE',
-            [registrationId]
-        );
-        if (!registration) throw new HttpError(404, 'ไม่พบใบสมัคร');
-        if (registration.application_status !== APPLICATION_STATUS.APPROVED) throw new HttpError(409, 'ใบสมัครยังไม่ได้รับอนุมัติสิทธิ์สอบ');
-        if (registration.result_published_at) throw new HttpError(409, 'ไม่สามารถเปลี่ยนสถานะหลังประกาศผลแล้ว');
-        await conn.query('UPDATE registrations SET exam_status = ? WHERE registration_id = ?', [status, registrationId]);
-        await conn.commit();
-        logAdminAction({ actorId: req.user.id, action: 'CHANGE_EXAM_STATUS', targetType: 'registration', targetId: registrationId, details: { from: registration.exam_status, to: status } })
-            .catch((error) => console.error('[Admin audit]', error.message));
-        return res.json({ success: true, message: `เปลี่ยนสถานะการสอบเป็น "${status}" เรียบร้อย` });
+        const changed = await db.withTransaction(async (conn) => {
+            const [[registration]] = await conn.query(
+                'SELECT registration_id, application_status, exam_status, result_published_at FROM registrations WHERE registration_id = ? FOR UPDATE',
+                [registrationId]
+            );
+            if (!registration) throw new HttpError(404, 'ไม่พบใบสมัคร');
+            if (registration.application_status !== APPLICATION_STATUS.APPROVED) throw new HttpError(409, 'ใบสมัครยังไม่ได้รับอนุมัติสิทธิ์สอบ');
+            if (registration.result_published_at) throw new HttpError(409, 'ไม่สามารถเปลี่ยนสถานะหลังประกาศผลแล้ว');
+            if (registration.exam_status === status) return false;
+            await conn.query('UPDATE registrations SET exam_status = ? WHERE registration_id = ?', [status, registrationId]);
+            await logAdminAction({ actorId: req.user.id, action: 'CHANGE_EXAM_STATUS', targetType: 'registration', targetId: registrationId, details: { from: registration.exam_status, to: status } }, conn);
+            return true;
+        });
+        return res.json({
+            success: true,
+            unchanged: !changed,
+            message: changed ? `เปลี่ยนสถานะการสอบเป็น "${status}" เรียบร้อย` : `สถานะการสอบเป็น "${status}" อยู่แล้ว`,
+        });
     } catch (error) {
-        if (conn) await conn.rollback().catch(() => {});
         if (error instanceof HttpError) return res.status(error.status).json({ success: false, message: error.message });
         console.error('[Update exam status]', error.message);
         return res.status(500).json({ success: false, message: 'ไม่สามารถเปลี่ยนสถานะการสอบได้' });
-    } finally {
-        if (conn) conn.release();
     }
 };
 
@@ -175,17 +195,6 @@ exports.getAvailableCourses = async (req, res) => {
         return res.status(500).json({ success: false, message: 'ไม่สามารถโหลดรายวิชาได้' });
     }
 };
-
-async function getOrCreateSession(conn, course) {
-    if (!course.exam_date || !course.exam_location) throw new HttpError(409, 'วิชานี้ยังไม่ได้กำหนดวันสอบหรือสถานที่สอบ');
-    const sessionName = `${course.course_code} ${course.exam_time || ''}`.trim();
-    const [result] = await conn.query(
-        `INSERT INTO exam_sessions (session_name, exam_date, location) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE session_id=LAST_INSERT_ID(session_id)`,
-        [sessionName, course.exam_date, course.exam_location]
-    );
-    return result.insertId;
-}
 
 exports.applyExam = async (req, res) => {
     const courseId = Number(req.body.course_id);
@@ -206,6 +215,7 @@ exports.applyExam = async (req, res) => {
         const [[course]] = await conn.query('SELECT * FROM exam_courses WHERE course_id = ? FOR UPDATE', [courseId]);
         if (!course) throw new HttpError(404, 'ไม่พบวิชาสอบ');
         if (computeCourseStatus(course) !== COURSE_STATUS.OPEN) throw new HttpError(409, 'วิชานี้ไม่ได้อยู่ในช่วงเปิดรับสมัคร');
+        if (hasExamDatePassed(course)) throw new HttpError(409, 'วิชานี้ผ่านวันสอบไปแล้ว');
         const [[seat]] = await conn.query(
             'SELECT COUNT(*) AS total FROM registrations WHERE course_id = ? AND application_status <> ?',
             [courseId, APPLICATION_STATUS.REJECTED]

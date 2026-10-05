@@ -1,25 +1,38 @@
 import axios from 'axios';
 import { currentAppPath, goTo } from '../utils/navigation';
+import { getToken, setSession, clearSession } from './session';
 
 export const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export function clearAuth() {
-    sessionStorage.removeItem('token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('role');
-    localStorage.removeItem('user');
+    clearSession();
 }
 
 const API = axios.create({ baseURL: API_BASE, withCredentials: true });
 
 API.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('token');
+    const token = getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
 });
 
+// ขอ access token ใหม่จาก refresh cookie (ใช้ร่วมกันระหว่าง interceptor และการกู้เซสชันของ ProtectedRoute)
+// คำขอที่เกิดพร้อมกันใช้ promise เดียวกัน เพื่อไม่ให้ยิง refresh ซ้ำ
 let refreshPromise = null;
+export function refreshSession() {
+    refreshPromise ||= axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
+        .then((response) => {
+            setSession({ token: response.data.token, role: response.data.role, user: response.data.user });
+            return response.data;
+        })
+        .finally(() => { refreshPromise = null; });
+    return refreshPromise;
+}
+
+// refresh ล้มเหลวเพราะ "เซสชันใช้ไม่ได้แล้ว" (401/403) ต่างจาก "เครือข่าย/เซิร์ฟเวอร์ล่มชั่วคราว" (ไม่มี response หรือ 5xx)
+// กรณีหลังต้องไม่เด้งผู้ใช้ออก เพราะเซสชันยังดีอยู่
+const isSessionRejected = (error) => [401, 403].includes(error?.response?.status);
+
 API.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -35,23 +48,21 @@ API.interceptors.response.use(
             '/auth/refresh',
         ];
         const shouldSkipRefresh = publicAuthPaths.some((path) => requestUrl.includes(path));
-        const hasAccessToken = Boolean(sessionStorage.getItem('token'));
+        const hasAccessToken = Boolean(getToken());
         if (error.response?.status !== 401 || original._retry || shouldSkipRefresh || !hasAccessToken) {
             return Promise.reject(error);
         }
         original._retry = true;
         try {
-            refreshPromise ||= axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
-                .finally(() => { refreshPromise = null; });
-            const response = await refreshPromise;
-            sessionStorage.setItem('token', response.data.token);
-            if (response.data.role) localStorage.setItem('role', response.data.role);
-            original.headers = { ...(original.headers || {}), Authorization: `Bearer ${response.data.token}` };
+            const refreshed = await refreshSession();
+            original.headers = { ...(original.headers || {}), Authorization: `Bearer ${refreshed.token}` };
             return API(original);
         } catch (refreshError) {
-            clearAuth();
-            const currentPath = currentAppPath();
-            if (currentPath !== '/' && currentPath !== '/login') goTo('/login');
+            if (isSessionRejected(refreshError)) {
+                clearAuth();
+                const currentPath = currentAppPath();
+                if (currentPath !== '/' && currentPath !== '/login') goTo('/login');
+            }
             return Promise.reject(refreshError);
         }
     }

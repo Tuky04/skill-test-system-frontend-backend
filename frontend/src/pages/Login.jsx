@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import API from '../services/api';
+import { setSession } from '../services/session';
+import { formatThaiDate, daysUntil } from '../utils/dates';
 import '../styles/theme.css';
 
 // ✅ แก้ข้อ 1&2: import รูปตราโดยตรงจาก src ไม่ใช้ process.env.PUBLIC_URL
@@ -9,15 +11,8 @@ import sealImg from '../assets/rmuts-seal.png';
 
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const fmtDate = d => {
-    if (!d) return '—';
-    try { return new Date(d).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'numeric' }); }
-    catch { return '—'; }
-};
-const daysLeft = d => {
-    if (!d) return null;
-    return Math.ceil((new Date(d) - new Date()) / 86400000);
-};
+const fmtDate = d => formatThaiDate(d);
+const daysLeft = d => daysUntil(d);
 
 // ── Status Pill ────────────────────────────────────────────────
 const StatusPill = ({ status }) => {
@@ -112,9 +107,7 @@ const Login = () => {
             if (res.data?.success || res.data?.token) {
                 const user = res.data.user || {};
                 const role = user.role?.toLowerCase() || '';
-                sessionStorage.setItem('token',      res.data.token);
-                localStorage.setItem('role',         role);
-                localStorage.setItem('user',         JSON.stringify(user));
+                setSession({ token: res.data.token, role, user });
                 if      (role === 'admin')   navigate('/admin-report');
                 else if (role === 'staff')   navigate('/grading-panel');
                 else if (role === 'student') navigate('/student-dashboard');

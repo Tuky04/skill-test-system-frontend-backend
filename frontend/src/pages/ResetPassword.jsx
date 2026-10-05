@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import { passwordProblem } from '../utils/password';
 
 export default function ResetPassword() {
     const { token } = useParams();
@@ -14,7 +15,8 @@ export default function ResetPassword() {
     const submit = async (event) => {
         event.preventDefault();
         if (busy || ok) return;                       // กันกดซ้ำ / กันยิงหลัง token ถูกใช้ไปแล้ว
-        if (password.length < 8) { setOk(false); setMessage('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
+        const problem = passwordProblem(password);
+        if (problem) { setOk(false); setMessage(problem); return; }
         if (password !== confirm) { setOk(false); setMessage('รหัสผ่านทั้งสองช่องไม่ตรงกัน'); return; }
         setBusy(true); setMessage('');
         try {

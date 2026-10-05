@@ -1,0 +1,3 @@
+# Backend (Node.js) ไม่เคยถูกเสิร์ฟโดย Apache: ปิดทั้งโฟลเดอร์ (ซอร์สโค้ด, .env, ไฟล์อัปโหลดเดิม)
+# ใช้ Require โดยตรง ไม่พึ่ง mod_rewrite: กฎใน .htaccess ชั้นบนอยู่ใน <IfModule mod_rewrite.c> ซึ่งถ้าไม่ได้เปิดโมดูลจะถูกข้ามเงียบ ๆ
+Require all denied

@@ -8,24 +8,33 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).json({ success: false, code: 'AUTH_REQUIRED', message: 'กรุณาเข้าสู่ระบบก่อนใช้งาน' });
     }
 
+    let decoded;
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
-        const [[user]] = await db.query(
-            'SELECT user_id, username, role, is_active, token_version FROM users WHERE user_id = ?',
-            [decoded.id]
-        );
-        if (!user || !user.is_active) {
-            return res.status(401).json({ success: false, code: 'ACCOUNT_DISABLED', message: 'บัญชีนี้ถูกปิดใช้งาน' });
-        }
-        if (Number(decoded.ver || 0) !== Number(user.token_version || 0)) {
-            return res.status(401).json({ success: false, code: 'SESSION_REVOKED', message: 'เซสชันสิ้นสุดแล้ว กรุณาเข้าสู่ระบบใหม่' });
-        }
-        req.user = { id: user.user_id, user_id: user.user_id, username: user.username, role: user.role };
-        return next();
+        decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     } catch (error) {
         const code = error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
         return res.status(401).json({ success: false, code, message: 'เซสชันหมดอายุหรือไม่ถูกต้อง' });
     }
+
+    let user;
+    try {
+        [[user]] = await db.query(
+            'SELECT user_id, username, role, is_active, token_version FROM users WHERE user_id = ?',
+            [decoded.id]
+        );
+    } catch (error) {
+        // ฐานข้อมูลมีปัญหาไม่ใช่ความผิดของ token: ตอบ 503 เพื่อไม่ให้ frontend เข้าใจว่าเซสชันหมดอายุแล้วเด้งไปหน้าล็อกอิน
+        console.error('[Auth middleware]', error.message);
+        return res.status(503).json({ success: false, code: 'SERVICE_UNAVAILABLE', message: 'ระบบไม่พร้อมให้บริการชั่วคราว กรุณาลองใหม่' });
+    }
+    if (!user || !user.is_active) {
+        return res.status(401).json({ success: false, code: 'ACCOUNT_DISABLED', message: 'บัญชีนี้ถูกปิดใช้งาน' });
+    }
+    if (Number(decoded.ver || 0) !== Number(user.token_version || 0)) {
+        return res.status(401).json({ success: false, code: 'SESSION_REVOKED', message: 'เซสชันสิ้นสุดแล้ว กรุณาเข้าสู่ระบบใหม่' });
+    }
+    req.user = { id: user.user_id, user_id: user.user_id, username: user.username, role: user.role };
+    return next();
 };
 
 const requireRole = (...roles) => (req, res, next) => {

@@ -10,7 +10,7 @@ async function loadPassedRegistration(registrationId) {
     const [[row]] = await db.query(
         `SELECT r.registration_id, r.student_id, r.result_published_at,
                 s.user_id, s.title, s.full_name, s.student_code, s.university_student_code, s.id_card_number, s.doc_photo,
-                c.course_name, c.course_code,
+                c.course_name, c.course_code, c.theory_max_score, c.practical_max_score,
                 sc.theory_score, sc.practical_score, sc.total_score, sc.department_status
          FROM registrations r
          JOIN students s ON r.student_id = s.student_id
@@ -62,6 +62,7 @@ function certificateHtml(row, certificate, photo) {
     const verifyUrl = `${verifyBase}/verify-certificate/${certificate.verification_code}`;
     return `<!doctype html>
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>${escapeHtml(certificate.certificate_no)}</title>
 <style>
 @page{size:A4 landscape;margin:0}*{box-sizing:border-box}body{margin:0;background:#eee;font-family:Tahoma,"Noto Sans Thai",sans-serif;color:#172554}.sheet{width:297mm;min-height:210mm;margin:auto;background:#fff;padding:13mm}.frame{height:184mm;border:8px double #a16207;padding:12mm;text-align:center;position:relative}.org{font-size:18px;font-weight:700}.title{font-size:34px;color:#991b1b;margin:18px 0 8px}.name{font-size:32px;font-weight:700;margin:16px;color:#1e3a8a}.course{font-size:22px;font-weight:700;color:#991b1b;margin:12px}.details{display:flex;justify-content:center;gap:40px;margin:18px}.photo{position:absolute;left:18mm;bottom:18mm;width:28mm;height:36mm;object-fit:cover;border:1px solid #aaa}.verify{position:absolute;right:14mm;bottom:12mm;width:75mm;text-align:left;font-size:11px;color:#475569;overflow-wrap:anywhere}.signature{margin:28px auto 0;width:70mm;border-top:1px solid #333;padding-top:6px}.no{font-size:13px;color:#475569}@media print{body{background:#fff}.sheet{margin:0}}
@@ -73,7 +74,7 @@ function certificateHtml(row, certificate, photo) {
 <div class="name">${escapeHtml(row.title)}${escapeHtml(row.full_name)}</div>
 <p>ผ่านการทดสอบมาตรฐานฝีมือแรงงาน สาขา</p>
 <div class="course">${escapeHtml(row.course_name)}</div>
-<div class="details"><span>คะแนนรวม ${escapeHtml(row.total_score)} / 100</span><span>ให้ไว้ ณ วันที่ ${escapeHtml(issued)}</span></div>
+<div class="details"><span>คะแนนรวม ${escapeHtml(row.total_score)} / ${escapeHtml(Number(row.theory_max_score || 30) + Number(row.practical_max_score || 70))}</span><span>ให้ไว้ ณ วันที่ ${escapeHtml(issued)}</span></div>
 <div class="signature">ผู้ดำเนินการทดสอบมาตรฐานฝีมือแรงงาน</div>
 ${photo ? `<img class="photo" src="${photo}" alt="รูปผู้ผ่านการทดสอบ">` : ''}
 <div class="verify">รหัสนักศึกษา: ${escapeHtml(row.university_student_code)}<br>รหัสผู้สมัคร: ${escapeHtml(row.student_code)}<br>เลขบัตร: ${escapeHtml(maskedId)}<br>ตรวจสอบความถูกต้อง: ${escapeHtml(verifyUrl)}</div>
@@ -82,7 +83,9 @@ ${photo ? `<img class="photo" src="${photo}" alt="รูปผู้ผ่าน
 
 exports.generateCertificate = async (req, res) => {
     try {
-        const row = await loadPassedRegistration(Number(req.params.registration_id));
+        const registrationId = Number(req.params.registration_id);
+        if (!Number.isInteger(registrationId) || registrationId <= 0) return res.status(400).json({ success: false, message: 'เลขใบสมัครไม่ถูกต้อง' });
+        const row = await loadPassedRegistration(registrationId);
         if (!row) return res.status(404).json({ success: false, message: 'ไม่พบผลสอบที่ผ่านเกณฑ์' });
         if (req.user.role === 'student' && Number(row.user_id) !== Number(req.user.id)) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เปิดใบรับรองนี้' });
@@ -140,43 +143,63 @@ exports.getPassedList = async (req, res) => {
 
 exports.revokeCertificate = async (req, res) => {
     const registrationId = Number(req.params.registration_id);
-    const reason = String(req.body.reason || '').trim();
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
     if (!Number.isInteger(registrationId) || registrationId <= 0 || reason.length < 3 || reason.length > 255) {
         return res.status(400).json({ success: false, message: 'กรุณาระบุเหตุผลการเพิกถอน 3-255 ตัวอักษร' });
     }
     try {
-        const [result] = await db.query(
-            `UPDATE certificates SET revoked_at=NOW(), revoked_reason=?
-             WHERE registration_id=? AND revoked_at IS NULL`,
-            [reason, registrationId]
-        );
-        if (!result.affectedRows) return res.status(404).json({ success: false, message: 'ไม่พบใบรับรองที่ยังมีผล' });
-        logAdminAction({ actorId:req.user.id, action:'REVOKE_CERTIFICATE', targetType:'registration', targetId:registrationId, details:{ reason } })
-            .catch((error)=>console.error('[Certificate audit]',error.message));
-        return res.json({ success:true, message:'เพิกถอนใบรับรองแล้ว' });
+        // เพิกถอนและบันทึก audit ใน transaction เดียว: การเพิกถอนต้องมีหลักฐานเสมอ
+        const revoked = await db.withTransaction(async (conn) => {
+            const [result] = await conn.query(
+                `UPDATE certificates SET revoked_at=NOW(), revoked_reason=?
+                 WHERE registration_id=? AND revoked_at IS NULL`,
+                [reason, registrationId]
+            );
+            if (!result.affectedRows) return false;
+            await logAdminAction({ actorId: req.user.id, action: 'REVOKE_CERTIFICATE', targetType: 'registration', targetId: registrationId, details: { reason } }, conn);
+            return true;
+        });
+        if (!revoked) return res.status(404).json({ success: false, message: 'ไม่พบใบรับรองที่ยังมีผล' });
+        return res.json({ success: true, message: 'เพิกถอนใบรับรองแล้ว' });
     } catch (error) {
-        return res.status(500).json({ success:false, message:'ไม่สามารถเพิกถอนใบรับรองได้' });
+        console.error('[Certificate revoke]', error.message);
+        return res.status(500).json({ success: false, message: 'ไม่สามารถเพิกถอนใบรับรองได้' });
     }
 };
 
 exports.reissueCertificate = async (req, res) => {
     const registrationId = Number(req.params.registration_id);
-    if (!Number.isInteger(registrationId) || registrationId <= 0) return res.status(400).json({ success:false, message:'เลขใบสมัครไม่ถูกต้อง' });
+    if (!Number.isInteger(registrationId) || registrationId <= 0) return res.status(400).json({ success: false, message: 'เลขใบสมัครไม่ถูกต้อง' });
     try {
-        const [[certificate]] = await db.query('SELECT certificate_no, issue_version, revoked_at FROM certificates WHERE registration_id=?', [registrationId]);
-        if (!certificate || !certificate.revoked_at) return res.status(409).json({ success:false, message:'ออกใหม่ได้เฉพาะใบรับรองที่ถูกเพิกถอนแล้ว' });
-        const nextVersion = Number(certificate.issue_version || 1) + 1;
-        const certificateNo = `${certificate.certificate_no.replace(/-R\d+$/, '')}-R${nextVersion}`;
-        const verificationCode = crypto.randomBytes(24).toString('hex');
-        await db.query(
-            `UPDATE certificates SET certificate_no=?, verification_code=?, issue_version=?, issued_at=NOW(),
-                    revoked_at=NULL, revoked_reason=NULL WHERE registration_id=?`,
-            [certificateNo, verificationCode, nextVersion, registrationId]
-        );
-        logAdminAction({ actorId:req.user.id, action:'REISSUE_CERTIFICATE', targetType:'registration', targetId:registrationId, details:{ certificate_no:certificateNo, issue_version:nextVersion } })
-            .catch((error)=>console.error('[Certificate audit]',error.message));
-        return res.json({ success:true, message:`ออกใบรับรองใหม่แล้ว (${certificateNo})` });
+        const outcome = await db.withTransaction(async (conn) => {
+            const [[certificate]] = await conn.query(
+                'SELECT certificate_no, issue_version, revoked_at FROM certificates WHERE registration_id=? FOR UPDATE',
+                [registrationId]
+            );
+            if (!certificate || !certificate.revoked_at) return { error: 'ออกใหม่ได้เฉพาะใบรับรองที่ถูกเพิกถอนแล้ว' };
+            // ออกใหม่ได้เฉพาะเมื่อผลสอบปัจจุบันยังผ่านเกณฑ์ (เช่น ถูกเพิกถอนเพราะเข้าใจผิด) ไม่ใช่ผลที่ถูกแก้เป็นไม่ผ่านแล้ว
+            const [[result]] = await conn.query(
+                `SELECT sc.department_status, sc.total_score FROM scores sc
+                 JOIN registrations r ON r.registration_id = sc.registration_id
+                 WHERE sc.registration_id=? AND r.result_published_at IS NOT NULL`,
+                [registrationId]
+            );
+            if (!result || result.department_status !== 'ได้รับวุฒิบัตร') return { error: 'ผลสอบปัจจุบันไม่ผ่านเกณฑ์ จึงออกใบรับรองใหม่ไม่ได้' };
+            const nextVersion = Number(certificate.issue_version || 1) + 1;
+            const certificateNo = `${certificate.certificate_no.replace(/-R\d+$/, '')}-R${nextVersion}`;
+            const verificationCode = crypto.randomBytes(24).toString('hex');
+            await conn.query(
+                `UPDATE certificates SET certificate_no=?, verification_code=?, issue_version=?, issued_at=NOW(),
+                        total_score=?, revoked_at=NULL, revoked_reason=NULL WHERE registration_id=?`,
+                [certificateNo, verificationCode, nextVersion, result.total_score, registrationId]
+            );
+            await logAdminAction({ actorId: req.user.id, action: 'REISSUE_CERTIFICATE', targetType: 'registration', targetId: registrationId, details: { certificate_no: certificateNo, issue_version: nextVersion } }, conn);
+            return { certificateNo };
+        });
+        if (outcome.error) return res.status(409).json({ success: false, message: outcome.error });
+        return res.json({ success: true, message: `ออกใบรับรองใหม่แล้ว (${outcome.certificateNo})` });
     } catch (error) {
-        return res.status(500).json({ success:false, message:'ไม่สามารถออกใบรับรองใหม่ได้' });
+        console.error('[Certificate reissue]', error.message);
+        return res.status(500).json({ success: false, message: 'ไม่สามารถออกใบรับรองใหม่ได้' });
     }
 };

@@ -3,13 +3,15 @@ import RmutsNavbar from '../components/RmutsNavbar';
 import API, { clearAuth } from '../services/api';
 import '../styles/theme.css';
 import { goTo } from '../utils/navigation';
+import { getRole } from '../services/session';
+import { passwordProblem } from '../utils/password';
 
 const ChangePassword = () => {
     const [form, setForm] = useState({ current_password:'', new_password:'', confirm_password:'' });
     const [loading, setLoading] = useState(false);
     const [msg, setMsg]   = useState('');
     const [type, setType] = useState('');
-    const role = localStorage.getItem('role');
+    const role = getRole();
     const home = role==='admin'?'/admin-report':role==='staff'?'/grading-panel':'/student-dashboard';
 
     const handleChange = e => setForm(p=>({...p,[e.target.name]:e.target.value}));
@@ -17,7 +19,8 @@ const ChangePassword = () => {
     const handleSubmit = async e => {
         e.preventDefault();
         if (form.new_password!==form.confirm_password) { setMsg('รหัสผ่านใหม่ไม่ตรงกัน'); setType('error'); return; }
-        if (form.new_password.length<8) { setMsg('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'); setType('error'); return; }
+        const problem = passwordProblem(form.new_password);
+        if (problem) { setMsg(problem); setType('error'); return; }
         try {
             setLoading(true);
             const res = await API.put('/auth/change-password', form);

@@ -3,6 +3,7 @@ import RmutsNavbar from '../components/RmutsNavbar';
 import API from '../services/api';
 import '../styles/theme.css';
 import { goTo } from '../utils/navigation';
+import { formatThaiDate } from '../utils/dates';
 
 const BarChart = ({ data }) => {
     const max = Math.max(...data.map(d=>d.value),1);
@@ -69,7 +70,7 @@ const AdminReport = () => {
     const handleToggle = async (c) => { try { await API.put(`/courses/${c.course_id}/toggle-status`,{current_status:c.course_status}); fetchAll(); } catch { showMsg('เปลี่ยนสถานะไม่สำเร็จ','error'); } };
     const clearStatusOverride = async (c) => { try { await API.delete(`/courses/${c.course_id}/status-override`); fetchAll(); } catch { showMsg('ไม่สามารถกลับไปใช้สถานะอัตโนมัติ','error'); } };
     const clearForm = () => { setCourseId(null); setCourseCode(''); setCourseName(''); setExamDate(''); setExamTime(''); setExamLocation(''); setRegOpenDate(''); setRegCloseDate(''); setMaxSeats(''); setMaxAttempts('3'); setDescription(''); setIsEditing(false); };
-    const fmtDate = d => d?new Date(d).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const fmtDate = d => formatThaiDate(d);
     const passRate = stats?(stats.total_scored>0?Math.round((stats.total_passed/stats.total_scored)*100):0):0;
 
     if (loading) return (
@@ -83,6 +84,7 @@ const AdminReport = () => {
             <RmutsNavbar title="ระบบบริหารจัดการ" actions={[
                 { label:'👥 จัดการผู้ใช้งาน', onClick:()=>goTo('/user-management'), gold:true },
                 { label:'🏅 ออกใบรับรอง', onClick:()=>goTo('/certificates') },
+                { label:'✏️ แก้ไขคะแนน', onClick:()=>goTo('/score-correction') },
                 { label:'📋 Audit Log', onClick:()=>goTo('/audit-log') },
             ]}/>
             <div className="rmuts-page__body">

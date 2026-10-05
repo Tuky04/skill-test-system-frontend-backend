@@ -6,7 +6,9 @@ const {
     HttpError,
     computeCourseStatus,
     createApplicationNo,
+    hasExamDatePassed,
 } = require('../utils/domain');
+const { getOrCreateSession } = require('../utils/sessions');
 
 async function loadStudent(dbLike, userId) {
     const [[student]] = await dbLike.query(
@@ -50,6 +52,7 @@ function eligibility(history, course) {
 
 exports.checkRetakeEligibility = async (req, res) => {
     const courseId = Number(req.params.course_id);
+    if (!Number.isInteger(courseId) || courseId <= 0) return res.status(400).json({ success: false, message: 'รหัสวิชาไม่ถูกต้อง' });
     try {
         const student = await loadStudent(db, req.user.id);
         if (!student) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้สมัคร' });
@@ -73,20 +76,10 @@ exports.checkRetakeEligibility = async (req, res) => {
     }
 };
 
-async function getOrCreateSession(conn, course) {
-    if (!course.exam_date || !course.exam_location) throw new HttpError(409, 'วิชานี้ยังไม่ได้กำหนดวันสอบหรือสถานที่สอบ');
-    const sessionName = `${course.course_code} ${course.exam_time || ''}`.trim();
-    const [result] = await conn.query(
-        `INSERT INTO exam_sessions (session_name, exam_date, location) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE session_id=LAST_INSERT_ID(session_id)`,
-        [sessionName, course.exam_date, course.exam_location]
-    );
-    return result.insertId;
-}
-
 exports.applyRetake = async (req, res) => {
     const courseId = Number(req.body.course_id);
-    const reason = String(req.body.retake_reason || '').trim().slice(0, 255) || null;
+    if (!Number.isInteger(courseId) || courseId <= 0) return res.status(400).json({ success: false, message: 'กรุณาเลือกวิชาสอบ' });
+    const reason = typeof req.body.retake_reason === 'string' ? req.body.retake_reason.trim().slice(0, 255) || null : null;
     let conn;
     try {
         conn = await db.getConnection();
@@ -99,6 +92,7 @@ exports.applyRetake = async (req, res) => {
         const history = await loadHistory(conn, student.student_id, courseId, true);
         const decision = eligibility(history, course);
         if (!decision.can_retake) throw new HttpError(409, decision.reason);
+        if (hasExamDatePassed(course)) throw new HttpError(409, 'วิชานี้ผ่านวันสอบไปแล้ว');
 
         const [[seat]] = await conn.query(
             'SELECT COUNT(*) AS total FROM registrations WHERE course_id = ? AND application_status <> ?',

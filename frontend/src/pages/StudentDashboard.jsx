@@ -3,8 +3,9 @@ import RmutsNavbar from '../components/RmutsNavbar';
 import API from '../services/api';
 import '../styles/theme.css';
 import { goTo } from '../utils/navigation';
+import { formatThaiDate } from '../utils/dates';
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+const fmtDate = d => formatThaiDate(d);
 const fmtTime = value => {
     if (!value) return 'ยังไม่กำหนด';
     const text = String(value).trim();

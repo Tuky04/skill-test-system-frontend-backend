@@ -24,6 +24,7 @@ import ResendVerification from './pages/ResendVerification';
 import StudentRecords from './pages/StudentRecords';
 import StudentDetail from './pages/StudentDetail';
 import DataExport from './pages/DataExport';
+import ScoreCorrection from './pages/ScoreCorrection';
 
 
 function App() {
@@ -63,6 +64,11 @@ function App() {
         <Route path="/audit-log" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AuditLog />
+          </ProtectedRoute>
+        } />
+        <Route path="/score-correction" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ScoreCorrection />
           </ProtectedRoute>
         } />
         {/* 🧑‍🎓 หน้าสำหรับนักศึกษา (ต้องล็อกอินสิทธิ์ student) */}

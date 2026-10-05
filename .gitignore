@@ -1,0 +1,16 @@
+# ห้ามนำข้อมูลจริงขึ้น repository: SQL dump ที่มีข้อมูลบุคคล, เอกสารที่ผู้สมัครอัปโหลด, ไฟล์ .env
+# schema เปล่าสำหรับติดตั้งคือ skill_test_system.sql และ migration อยู่ใน backend/migrations/
+*.sql
+!skill_test_system.sql
+!backend/migrations/*.sql
+
+backend/uploads/
+backend/private_uploads/*
+!backend/private_uploads/.gitkeep
+
+.env
+.env.local
+node_modules/
+*.zip
+*.log
+.claude/worktrees/

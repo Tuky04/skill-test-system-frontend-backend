@@ -4,14 +4,14 @@ import NotificationBell from '../pages/NotificationBell';
 import API, { clearAuth } from '../services/api';
 import SEAL from '../assets/rmuts-seal.png';
 import { currentAppPath, goTo } from '../utils/navigation';
+import { getRole, getUser } from '../services/session';
 
 const ROLE_LABEL = { admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่/อาจารย์', student:'นักศึกษา' };
 const ROLE_HOME  = { admin:'/admin-report', staff:'/grading-panel', student:'/student-dashboard' };
 
 const RmutsNavbar = ({ title, actions = [] }) => {
-    const role     = localStorage.getItem('role') || '';
-    const userStr  = localStorage.getItem('user') || '{}';
-    const user     = JSON.parse(userStr);
+    const role     = getRole();
+    const user     = getUser();
     const name     = user.full_name || user.username || '';
     const homeUrl  = ROLE_HOME[role] || '/';
     const pathName = currentAppPath();

@@ -124,3 +124,39 @@ test('staff can enter valid scores and publish the result', async () => {
   expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('80 คะแนน'));
   await waitFor(() => expect(screen.queryByRole('button', { name: /บันทึกและประกาศผล/ })).not.toBeInTheDocument());
 });
+
+test('a PDF document opens in an embedded viewer instead of a broken image', async () => {
+  const pdfStudent = { ...pendingStudent, doc_id_card: 'doc_id_card-abc.pdf' };
+  API.get.mockImplementation((path) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [pdfStudent] } });
+    if (path.startsWith('/documents/')) return Promise.resolve({ data: new Blob(['%PDF-1.4'], { type: 'application/pdf' }), headers: {} });
+    return Promise.resolve({ data: { success: true, data: [] } });
+  });
+  global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/0b2c1b6e-1111-2222-3333-444455556666');
+  global.URL.revokeObjectURL = jest.fn();
+  const user = userEvent.setup();
+
+  render(<StudentVerification />);
+  await user.click(await screen.findByRole('button', { name: /บัตร/ }));
+
+  expect(await screen.findByTitle('document')).toBeInTheDocument();
+  expect(screen.queryByAltText('document')).not.toBeInTheDocument();
+  expect(API.get).toHaveBeenCalledWith('/documents/doc_id_card-abc.pdf', { responseType: 'blob' });
+});
+
+test('the grading panel loads every page of registrations, not only the newest 100', async () => {
+  const makeRow = (index) => ({ ...examRegistration, registration_id: 1000 + index, application_no: `APP-${index}`, application_status: 'รอดำเนินการ', exam_status: 'รอสอบ' });
+  const pageOne = Array.from({ length: 100 }, (_, index) => makeRow(index));
+  const pageTwo = Array.from({ length: 50 }, (_, index) => makeRow(100 + index));
+  API.get.mockImplementation((path, options) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [] } });
+    const page = options?.params?.page || 1;
+    return Promise.resolve({ data: { success: true, data: page === 1 ? pageOne : pageTwo, total: 150 } });
+  });
+
+  render(<GradingPanel />);
+
+  expect(await screen.findByText(/พบ 150 รายการ/)).toBeInTheDocument();
+  expect(API.get).toHaveBeenCalledWith('/registrations', { params: { limit: 100, page: 1 } });
+  expect(API.get).toHaveBeenCalledWith('/registrations', { params: { limit: 100, page: 2 } });
+});

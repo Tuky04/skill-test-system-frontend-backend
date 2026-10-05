@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { passwordProblem } from '../utils/password';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -147,7 +148,8 @@ const Register = () => {
         if (!form.employment_status) return 'กรุณาเลือกสถานะการทำงาน';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'รูปแบบอีเมลไม่ถูกต้อง';
         if (!/^[A-Za-z0-9._-]{4,50}$/.test(form.username)) return 'ชื่อผู้ใช้ต้องยาว 4-50 ตัว และใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง';
-        if (form.password.length < 8) return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
+        const passwordIssue = passwordProblem(form.password);
+        if (passwordIssue) return passwordIssue;
         if (form.password !== form.confirm_password) return 'รหัสผ่านไม่ตรงกัน';
         return null;
     };
