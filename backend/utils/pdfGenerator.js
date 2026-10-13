@@ -125,7 +125,7 @@ exports.getPassedList = async (req, res) => {
         const [rows] = await db.query(
             `SELECT r.registration_id, s.student_code, s.university_student_code, s.title, s.full_name,
                     c.course_name, c.theory_max_score, c.practical_max_score,
-                    sc.theory_score, sc.practical_score, sc.total_score,
+                    sc.theory_score, sc.practical_score, sc.total_score, sc.department_status,
                     cert.certificate_no, cert.issued_at, cert.revoked_at
              FROM registrations r
              JOIN students s ON r.student_id = s.student_id

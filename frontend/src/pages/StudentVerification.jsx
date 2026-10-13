@@ -123,7 +123,7 @@ const StudentVerification = () => {
                 {/* Modal ตรวจสอบ */}
                 {selected && (
                     <div className="rmuts-overlay" onClick={()=>setSelected(null)}>
-                        <div className="rmuts-modal" onClick={e=>e.stopPropagation()}>
+                        <div className="rmuts-modal" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
                             <div style={{ borderBottom:'3px solid #F5A800', paddingBottom:14, marginBottom:18 }}>
                                 <div className="rmuts-modal__title">🔍 ตรวจสอบเอกสาร</div>
                                 <div style={{ color:'#64748b', fontSize:13, marginTop:4 }}>{selected.full_name} — รหัสนักศึกษา {selected.university_student_code||'—'} — รหัสผู้สมัคร {selected.student_code}</div>

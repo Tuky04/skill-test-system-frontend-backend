@@ -11,6 +11,16 @@ process.env.RATE_LIMIT_LOGIN_MAX = '100';
 process.env.RATE_LIMIT_LOGIN_ACCOUNT_MAX = '3';
 process.env.RATE_LIMIT_API_MAX = '0';
 
+// โฟลเดอร์หน้าเว็บจำลองสำหรับโหมดโปรเซสเดียว (FRONTEND_DIR)
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const webDir = fs.mkdtempSync(path.join(os.tmpdir(), 'web-test-'));
+fs.mkdirSync(path.join(webDir, 'static'));
+fs.writeFileSync(path.join(webDir, 'index.html'), '<!doctype html><title>skill-test-app</title><div id="root"></div>');
+fs.writeFileSync(path.join(webDir, 'static', 'app.123.js'), 'console.log(1)');
+process.env.FRONTEND_DIR = webDir;
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
@@ -28,7 +38,7 @@ let base;
 test.before(() => new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', () => { base = `http://127.0.0.1:${server.address().port}`; resolve(); });
 }));
-test.after(() => new Promise((resolve) => server.close(resolve)));
+test.after(() => new Promise((resolve) => { fs.rmSync(webDir, { recursive: true, force: true }); server.close(resolve); }));
 test.beforeEach(() => { db.reset(); email.calls.length = 0; });
 
 const token = (id) => jwt.sign({ id, ver: 0 }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '5m' });
@@ -255,4 +265,38 @@ test('a rejected application cannot be re-approved once the course seats are ful
     assert.equal(response.status, 409);
     assert.equal(db.ran(/UPDATE registrations/), false);
     assert.ok(db.ran(/^ROLLBACK$/));
+});
+
+test('single-process mode serves the React app with a CSP that allows its own scripts, and keeps /api strict', async () => {
+    const page = await fetch(`${base}/`);
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /skill-test-app/);
+    assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
+    assert.equal(page.headers.get('cache-control'), 'no-cache');
+
+    // เส้นทางของ React Router ที่เปิดตรง/รีเฟรชต้องได้ index.html
+    const deep = await fetch(`${base}/student-dashboard`);
+    assert.equal(deep.status, 200);
+    assert.match(await deep.text(), /skill-test-app/);
+
+    const asset = await fetch(`${base}/static/app.123.js`);
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers.get('cache-control'), /immutable/);
+
+    // API ที่ไม่พบยังเป็น 404 JSON และ CSP ของ API เข้มเหมือนเดิม
+    const missing = await call('GET', '/api/nothing-here');
+    assert.equal(missing.status, 404);
+    assert.equal(missing.json.success, false);
+    assert.match(missing.headers.get('content-security-policy'), /default-src 'none'/);
+});
+
+test('requests from the page served by this very host pass CORS without CORS_ORIGINS', async () => {
+    const origin = base; // Origin = http://127.0.0.1:<port> ตรงกับ Host
+    db.setRoutes([[/FROM exam_courses/, rows()]]);
+    const same = await call('GET', '/api/courses/public', { headers: { Origin: origin } });
+    assert.equal(same.status, 200);
+    const other = await call('GET', '/api/courses/public', { headers: { Origin: 'http://127.0.0.1:1' } });
+    assert.equal(other.status, 403);
+    const spoof = await call('GET', '/api/courses/public', { headers: { Origin: 'http://evil.example' } });
+    assert.equal(spoof.status, 403);
 });

@@ -1,0 +1,29 @@
+# ตัวอย่างตั้ง Nginx เป็นด่านหน้า (HTTPS) ให้ระบบ — ใช้เมื่อสถานศึกษามีโดเมน/ใบรับรอง HTTPS
+# ใน app/.env ตั้ง:  HOST=127.0.0.1   TRUST_PROXY_HOPS=1   COOKIE_SECURE=true   PUBLIC_APP_URL=https://<โดเมน>
+# แล้วเปลี่ยน 8080 ด้านล่างให้ตรงกับ PORT
+server {
+    listen 80;
+    server_name skilltest.example.ac.th;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name skilltest.example.ac.th;
+
+    ssl_certificate     /etc/ssl/skilltest/fullchain.pem;
+    ssl_certificate_key /etc/ssl/skilltest/privkey.pem;
+
+    client_max_body_size 20m;            # สมัครแนบ 3 ไฟล์ × 5 MB
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;         # ส่งออก Excel ใช้เวลา
+    }
+}

@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './fonts';
 import App from './App';
+import './styles/responsive.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import { purgeLegacyStorage } from './services/session';
 

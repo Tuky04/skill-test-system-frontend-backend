@@ -40,7 +40,9 @@ function createTokens(user) {
 function setRefreshCookie(res, refreshToken) {
     res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        // ค่าเริ่มต้น: เปิด secure เมื่อเป็น production (ต้องเข้าผ่าน HTTPS) ถ้าสถานศึกษาให้ใช้ HTTP ล้วนบนพอร์ตของเขา ให้ตั้ง COOKIE_SECURE=false
+        // มิฉะนั้นเบราว์เซอร์จะไม่เก็บคุกกี้ refresh และผู้ใช้ต้องล็อกอินใหม่ทุก 15 นาที
+        secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/api/auth',
         maxAge: REFRESH_TTL_SECONDS * 1000,

@@ -5,6 +5,7 @@ import API from '../services/api';
 import { setSession } from '../services/session';
 import { formatThaiDate, daysUntil } from '../utils/dates';
 import '../styles/theme.css';
+import Icon from '../components/Icon';
 
 // ✅ แก้ข้อ 1&2: import รูปตราโดยตรงจาก src ไม่ใช้ process.env.PUBLIC_URL
 import sealImg from '../assets/rmuts-seal.png';
@@ -159,7 +160,7 @@ const Login = () => {
 
             {/* ── Main 2-col layout ── */}
             <div style={{ flex:1, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 20px' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'360px 1fr', gap:20, width:'100%', maxWidth:1100, alignItems:'start' }}>
+                <div className="rmuts-login-grid">
 
                     {/* ── ซ้าย: Login Card ── */}
                     <div style={{ background:'white', borderRadius:14, overflow:'hidden', boxShadow:'0 8px 28px rgba(13,30,74,0.1), 0 0 0 1px rgba(26,47,110,0.06)' }}>
@@ -194,22 +195,22 @@ const Login = () => {
 
                             <form onSubmit={handleLogin}>
                                 <div className="rmuts-form-group">
-                                    <label className="rmuts-label">ชื่อผู้ใช้งาน <span>*</span></label>
+                                    <label className="rmuts-label" htmlFor="login-username">ชื่อผู้ใช้งาน <span>*</span></label>
                                     <div className="rmuts-input-wrap">
-                                        <i className="ti ti-user rmuts-input-icon" aria-hidden="true"/>
-                                        <input className="rmuts-input" type="text" value={username}
+                                        <Icon name="user" className="rmuts-input-icon" />
+                                        <input id="login-username" className="rmuts-input" type="text" value={username}
                                             onChange={e=>setUsername(e.target.value)}
                                             placeholder="กรอกชื่อผู้ใช้งาน" required autoComplete="username"/>
                                     </div>
                                 </div>
                                 <div className="rmuts-form-group">
-                                    <label className="rmuts-label">รหัสผ่าน <span>*</span></label>
+                                    <label className="rmuts-label" htmlFor="login-password">รหัสผ่าน <span>*</span></label>
                                     <div className="rmuts-input-wrap">
-                                        <i className="ti ti-lock rmuts-input-icon" aria-hidden="true"/>
-                                        <input className="rmuts-input" type={showPass?'text':'password'} value={password}
+                                        <Icon name="lock" className="rmuts-input-icon" />
+                                        <input id="login-password" className="rmuts-input" type={showPass?'text':'password'} value={password}
                                             onChange={e=>setPassword(e.target.value)}
                                             placeholder="กรอกรหัสผ่าน" required autoComplete="current-password"/>
-                                        <button type="button" onClick={()=>setShowPass(p=>!p)} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:13, padding:2 }}>
+                                        <button type="button" aria-label={showPass ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} aria-pressed={showPass} onClick={()=>setShowPass(p=>!p)} style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:16, padding:'8px 10px', minWidth:40, minHeight:40 }}>
                                             {showPass ? '🙈' : '👁'}
                                         </button>
                                     </div>
@@ -249,7 +250,7 @@ const Login = () => {
                         </div>
 
                         <div style={{ background:'#f8fafc', borderTop:'1px solid #e8ecf0', padding:'7px 22px', textAlign:'center', fontSize:10, color:'#94a3b8' }}>
-                            🔒 SSL Encrypted &nbsp;·&nbsp; © 2568 มทร.สุวรรณภูมิ
+                            {window.location.protocol === 'https:' ? '🔒 เชื่อมต่อแบบเข้ารหัส (HTTPS) · ' : ''}© 2568 มทร.สุวรรณภูมิ
                         </div>
                     </div>
 

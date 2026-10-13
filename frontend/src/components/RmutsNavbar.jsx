@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/theme.css';
 import NotificationBell from '../pages/NotificationBell';
 import API, { clearAuth } from '../services/api';
 import SEAL from '../assets/rmuts-seal.png';
+import Icon from './Icon';
 import { currentAppPath, goTo } from '../utils/navigation';
 import { getRole, getUser } from '../services/session';
 
 const ROLE_LABEL = { admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่/อาจารย์', student:'นักศึกษา' };
 const ROLE_HOME  = { admin:'/admin-report', staff:'/grading-panel', student:'/student-dashboard' };
 
+// แถบนำทาง: เดสก์ท็อปแสดงปุ่มทั้งหมดในแถวเดียว, มือถือ (<= 768px) พับเป็นปุ่มเมนู ☰
 const RmutsNavbar = ({ title, actions = [] }) => {
+    const [menuOpen, setMenuOpen] = useState(false);
     const role     = getRole();
     const user     = getUser();
     const name     = user.full_name || user.username || '';
@@ -20,59 +23,48 @@ const RmutsNavbar = ({ title, actions = [] }) => {
         clearAuth();
         goTo('/login');
     };
+    const go = (path) => { setMenuOpen(false); goTo(path); };
 
     return (
         <>
-            {/* Top bar เหลือง */}
-            <div style={{ background:'#F5A800', padding:'0 24px', height:38, display:'flex', alignItems:'center', gap:10 }}>
-                <img src={SEAL} alt="" style={{ width:26, height:26, objectFit:'contain', mixBlendMode:'multiply' }}/>
+            <div className="rmuts-topbar">
+                <img src={SEAL} alt="" className="rmuts-topbar__seal"/>
                 <div>
-                    <div style={{ fontFamily:"'Noto Serif Thai',serif", fontSize:12, fontWeight:700, color:'#1a2f6e' }}>มหาวิทยาลัยเทคโนโลยีราชมงคลสุวรรณภูมิ</div>
-                    <div style={{ fontSize:10, color:'#1a2f6e', opacity:0.7 }}>คณะบริหารธุรกิจและเทคโนโลยีสารสนเทศ</div>
+                    <div className="rmuts-topbar__name">มหาวิทยาลัยเทคโนโลยีราชมงคลสุวรรณภูมิ</div>
+                    <div className="rmuts-topbar__sub">คณะบริหารธุรกิจและเทคโนโลยีสารสนเทศ</div>
                 </div>
             </div>
-            {/* Navbar น้ำเงิน */}
-            <div style={{ background:'#1a2f6e', height:60, padding:'0 24px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'3px solid #F5A800', boxShadow:'0 2px 12px rgba(0,0,0,0.15)', position:'sticky', top:38, zIndex:99 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }} onClick={()=>goTo(homeUrl)}>
-                    <img src={SEAL} alt="" style={{ width:32, height:32, objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)' }}/>
-                    <div>
-                        <div style={{ fontFamily:"'Noto Serif Thai',serif", fontSize:14, fontWeight:600, color:'#F5A800', lineHeight:1.3 }}>
-                            {title || 'ระบบทดสอบมาตรฐานฝีมือแรงงาน'}
-                        </div>
-                        <div style={{ fontSize:11, color:'rgba(245,168,0,0.6)' }}>{ROLE_LABEL[role] || ''}</div>
-                    </div>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    {name && <span style={{ fontSize:13, color:'rgba(255,255,255,0.75)', marginRight:4 }}>👤 {name}</span>}
+            <header className="rmuts-nav">
+                <button type="button" className="rmuts-nav__brand" onClick={() => go(homeUrl)} aria-label="กลับหน้าหลัก">
+                    <img src={SEAL} alt="" className="rmuts-nav__seal"/>
+                    <span>
+                        <span className="rmuts-nav__title">{title || 'ระบบทดสอบมาตรฐานฝีมือแรงงาน'}</span>
+                        <span className="rmuts-nav__role">{ROLE_LABEL[role] || ''}</span>
+                    </span>
+                </button>
+                <button type="button" className="rmuts-nav__toggle" aria-expanded={menuOpen} aria-controls="rmuts-nav-actions"
+                    aria-label={menuOpen ? 'ปิดเมนู' : 'เปิดเมนู'} onClick={() => setMenuOpen((open) => !open)}>
+                    <Icon name={menuOpen ? 'close' : 'menu'} size={22}/>
+                </button>
+                <nav id="rmuts-nav-actions" className={`rmuts-nav__actions${menuOpen ? ' is-open' : ''}`} aria-label="เมนูหลัก">
+                    {name && <span className="rmuts-nav__user">👤 {name}</span>}
                     {role === 'staff' && !pathName.startsWith('/staff/students') && (
-                        <button onClick={() => goTo('/staff/students')}
-                            style={{ background:'rgba(255,255,255,0.12)', color:'white', border:'none', borderRadius:6, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                            👥 ข้อมูลนักศึกษา
-                        </button>
+                        <button type="button" className="rmuts-nav__btn" onClick={() => go('/staff/students')}>👥 ข้อมูลนักศึกษา</button>
                     )}
                     {role === 'staff' && pathName !== '/staff/data-export' && (
-                        <button onClick={() => goTo('/staff/data-export')}
-                            style={{ background:'#F5A800', color:'#1a2f6e', border:'none', borderRadius:6, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                            📊 ส่งออกข้อมูล
-                        </button>
+                        <button type="button" className="rmuts-nav__btn rmuts-nav__btn--gold" onClick={() => go('/staff/data-export')}>📊 ส่งออกข้อมูล</button>
                     )}
                     {actions.map((a, i) => (
-                        <button key={i} onClick={a.onClick}
-                            style={{ background: a.danger ? '#E74C3C' : a.gold ? '#F5A800' : 'rgba(255,255,255,0.12)', color: a.gold ? '#1a2f6e' : 'white', border:'none', borderRadius:6, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+                        <button type="button" key={i} onClick={() => { setMenuOpen(false); a.onClick(); }}
+                            className={`rmuts-nav__btn${a.danger ? ' rmuts-nav__btn--danger' : a.gold ? ' rmuts-nav__btn--gold' : ''}`}>
                             {a.label}
                         </button>
                     ))}
                     {role === 'student' && <NotificationBell/>}
-                    <button onClick={() => goTo('/change-password')}
-                        style={{ background:'rgba(255,255,255,0.1)', color:'white', border:'none', borderRadius:6, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                        🔑 เปลี่ยนรหัสผ่าน
-                    </button>
-                    <button onClick={handleLogout}
-                        style={{ background:'#E74C3C', color:'white', border:'none', borderRadius:6, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-                        ออกจากระบบ
-                    </button>
-                </div>
-            </div>
+                    <button type="button" className="rmuts-nav__btn rmuts-nav__btn--soft" onClick={() => go('/change-password')}>🔑 เปลี่ยนรหัสผ่าน</button>
+                    <button type="button" className="rmuts-nav__btn rmuts-nav__btn--danger" onClick={handleLogout}>ออกจากระบบ</button>
+                </nav>
+            </header>
         </>
     );
 };

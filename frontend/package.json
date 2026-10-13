@@ -4,6 +4,8 @@
   "private": true,
   "homepage": "/skill-test-system/frontend/build",
   "dependencies": {
+    "@fontsource/noto-serif-thai": "^5.3.0",
+    "@fontsource/sarabun": "^5.3.0",
     "axios": "^1.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

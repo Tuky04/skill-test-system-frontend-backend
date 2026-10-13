@@ -10,7 +10,8 @@
     "test-email": "node scripts/send-test-email.js",
     "create-admin": "node scripts/create-admin.js",
     "create-staff": "node scripts/create-staff.js",
-    "purge-unverified": "node scripts/purge-unverified.js"
+    "purge-unverified": "node scripts/purge-unverified.js",
+    "check-config": "node scripts/check-config.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

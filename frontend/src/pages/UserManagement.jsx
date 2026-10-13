@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import RmutsNavbar from '../components/RmutsNavbar';
 import API from '../services/api';
 import '../styles/theme.css';
+import Icon from '../components/Icon';
 import { goTo } from '../utils/navigation';
 import { formatThaiDateTime } from '../utils/dates';
 import { passwordProblem } from '../utils/password';
@@ -112,7 +113,7 @@ const UserManagement = () => {
             <div className="rmuts-page__body">
 
                 {/* Stats */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12, marginBottom:24 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(105px,1fr))', gap:12, marginBottom:24 }}>
                     {[
                         { label:'ทั้งหมด',      value:stats.total,    color:'#1a2f6e' },
                         { label:'ใช้งานได้',    value:stats.active,   color:'#27AE60' },
@@ -232,7 +233,7 @@ const UserManagement = () => {
                 {/* Modal Reset Password */}
                 {resetModal && (
                     <div className="rmuts-overlay" onClick={()=>setResetModal(null)}>
-                        <div className="rmuts-modal" style={{ maxWidth:420 }} onClick={e=>e.stopPropagation()}>
+                        <div className="rmuts-modal" role="dialog" aria-modal="true" style={{ maxWidth:420 }} onClick={e=>e.stopPropagation()}>
                             <div style={{ borderBottom:'3px solid #F5A800', paddingBottom:14, marginBottom:18 }}>
                                 <div style={{ fontSize:16, fontWeight:700, color:'#1a2f6e' }}>🔑 รีเซ็ตรหัสผ่าน</div>
                                 <div style={{ fontSize:13, color:'#64748b', marginTop:4 }}>
@@ -248,7 +249,7 @@ const UserManagement = () => {
                             <div className="rmuts-form-group">
                                 <label className="rmuts-label">รหัสผ่านใหม่ <span>*</span></label>
                                 <div className="rmuts-input-wrap">
-                                    <i className="ti ti-lock rmuts-input-icon"/>
+                                    <Icon name="lock" className="rmuts-input-icon" />
                                     <input className="rmuts-input" type="password" value={newPass}
                                         onChange={e=>setNewPass(e.target.value)}
                                         placeholder="อย่างน้อย 8 ตัวอักษร"/>
@@ -257,7 +258,7 @@ const UserManagement = () => {
                             <div className="rmuts-form-group">
                                 <label className="rmuts-label">ยืนยันรหัสผ่านใหม่ <span>*</span></label>
                                 <div className="rmuts-input-wrap">
-                                    <i className="ti ti-lock rmuts-input-icon"/>
+                                    <Icon name="lock" className="rmuts-input-icon" />
                                     <input className="rmuts-input" type="password" value={confirmPass}
                                         onChange={e=>setConfirmPass(e.target.value)}
                                         placeholder="กรอกซ้ำอีกครั้ง"

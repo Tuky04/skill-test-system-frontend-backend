@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
 const crypto = require('crypto');
+const path = require('path');
 require('dotenv').config();
 
 const apiRoutes = require('./routes/api');
@@ -22,6 +23,13 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+// โหมดโปรเซสเดียว: ถ้าตั้ง FRONTEND_DIR (โฟลเดอร์ build ของ React) backend จะเสิร์ฟหน้าเว็บเองที่พอร์ตเดียวกับ API
+// จึงไม่ต้องมี Apache/Nginx ก็ขึ้นระบบได้ (ใช้ proxy หน้าเพื่อ HTTPS ทีหลังได้)
+const frontendDir = process.env.FRONTEND_DIR ? path.resolve(process.env.FRONTEND_DIR) : null;
+const API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+// CSP ของหน้าเว็บ: สคริปต์/ฟอนต์/รูปจากตัวเองเท่านั้น (style inline จำเป็นเพราะ React ใช้ style attribute; blob: สำหรับพรีวิวเอกสาร/ใบรับรอง)
+const APP_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
 app.disable('x-powered-by');
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 0));
 app.use((req, res, next) => {
@@ -32,19 +40,25 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    res.setHeader('Content-Security-Policy', req.path.startsWith('/api') || req.path === '/health' ? API_CSP : APP_CSP);
     next();
 });
-app.use(cors({
-    credentials: true,
-    origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        // 403 ที่ชัดเจน ไม่ใช่ 500: origin ที่ไม่อนุญาตไม่ใช่ความผิดพลาดของเซิร์ฟเวอร์
-        const error = new Error('Origin ไม่ได้รับอนุญาต');
-        error.status = 403;
-        error.code = 'ORIGIN_FORBIDDEN';
-        return callback(error);
-    },
+
+// เบราว์เซอร์ใส่ Origin มาด้วยแม้เป็นคำขอ POST ภายในโดเมนเดียวกัน: ถ้า Origin ตรงกับ Host ที่ถูกเรียกอยู่ ถือว่าเป็นคำขอจากหน้าเว็บของเราเอง
+// (ไม่ต้องตั้ง CORS_ORIGINS เมื่อเสิร์ฟหน้าเว็บและ API จากที่เดียวกัน) ส่วน origin อื่นต้องอยู่ใน CORS_ORIGINS
+const isSameOrigin = (origin, host) => {
+    try { return Boolean(host) && new URL(origin).host === host; } catch { return false; }
+};
+app.use(cors((req, callback) => {
+    const origin = req.get('Origin');
+    if (!origin || allowedOrigins.includes(origin) || isSameOrigin(origin, req.get('Host'))) {
+        return callback(null, { credentials: true, origin: true });
+    }
+    // 403 ที่ชัดเจน ไม่ใช่ 500: origin ที่ไม่อนุญาตไม่ใช่ความผิดของเซิร์ฟเวอร์
+    const error = new Error('Origin ไม่ได้รับอนุญาต');
+    error.status = 403;
+    error.code = 'ORIGIN_FORBIDDEN';
+    return callback(error);
 }));
 app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false, limit: '200kb' }));
@@ -114,6 +128,15 @@ app.use('/api/auth/register', registerLimiter);
 app.use('/api/auth/forgot-password', forgotPasswordLimiter);
 app.use('/api/auth/resend-verification', resendVerificationLimiter);
 
+if (frontendDir) {
+    // ไฟล์ใน /static มีแฮชในชื่อ แคชได้ยาว; ไฟล์อื่น (index.html) ต้องตรวจใหม่ทุกครั้งเพื่อให้ได้เวอร์ชันล่าสุดหลังอัปเดต
+    app.use(express.static(frontendDir, {
+        index: false,
+        setHeaders(res, file) {
+            res.setHeader('Cache-Control', /[\\/]static[\\/]/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache');
+        },
+    }));
+}
 app.get('/health', async (req, res) => {
     try {
         await db.query('SELECT 1');
@@ -122,8 +145,17 @@ app.get('/health', async (req, res) => {
         res.status(503).json({ status: 'unavailable' });
     }
 });
-app.get('/', (req, res) => res.type('text/plain').send('Skill Test System API'));
+const sendIndex = (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(frontendDir, 'index.html'));
+};
+app.get('/', frontendDir ? sendIndex : (req, res) => res.type('text/plain').send('Skill Test System API'));
 app.use('/api', apiRoutes);
+if (frontendDir) {
+    // เส้นทางของ React Router (เช่น /login, /student-dashboard) ที่ถูกเปิดตรง ๆ หรือรีเฟรช ต้องได้ index.html
+    // ยกเว้น /api ที่ไม่พบ ซึ่งต้องตอบ 404 แบบ JSON เหมือนเดิม
+    app.get('*', (req, res, next) => (req.path.startsWith('/api/') ? next() : sendIndex(req, res)));
+}
 app.use((req, res) => res.status(404).json({ success: false, message: 'ไม่พบ API ที่ร้องขอ' }));
 app.use((error, req, res, next) => {
     const status = Number(error.status) >= 400 && Number(error.status) < 600 ? Number(error.status) : 500;
@@ -152,6 +184,12 @@ async function runStartupChecks() {
             console.error('[startup] ⚠️ ส่งอีเมลไม่ได้:', error.message);
             console.error('[startup] ⚠️ REQUIRE_EMAIL_VERIFICATION=true อยู่ — นักศึกษาจะสมัครได้แต่เข้าสู่ระบบไม่ได้');
             console.error('[startup] ⚠️ แก้ SMTP ใน .env หรือตั้ง REQUIRE_EMAIL_VERIFICATION=false ชั่วคราว');
+        }
+    }
+    if (frontendDir) {
+        console.log(`[startup] เสิร์ฟหน้าเว็บจาก ${frontendDir}`);
+        if (!require('fs').existsSync(path.join(frontendDir, 'index.html'))) {
+            console.error('[startup] ⛔ ไม่พบ index.html ใน FRONTEND_DIR — ตรวจค่านี้ใน .env');
         }
     }
     if (process.env.NODE_ENV === 'production') {

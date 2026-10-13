@@ -70,7 +70,7 @@ const CertificateManager = () => {
             <div className="rmuts-page__body">
 
                 {/* Header stats */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:24 }}>
                     <div className="rmuts-stat-card rmuts-stat-card--green">
                         <div style={{ fontSize:24, marginBottom:4 }}>🏆</div>
                         <div className="rmuts-stat-card__value">{students.length}</div>

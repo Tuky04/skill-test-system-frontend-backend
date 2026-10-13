@@ -295,7 +295,7 @@ const GradingPanel = () => {
             <div className="rmuts-page__body">
 
                 {/* Summary */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:14, marginBottom:24 }}>
                     {[
                         { icon:'📋', label:'ใบสมัครทั้งหมด', value:allApps.length, color:'--rmuts-navy' },
                         { icon:'⏳', label:'รอดำเนินการ', value:allApps.filter(a=>a.application_status==='รอดำเนินการ').length, color:'warning' },
@@ -472,7 +472,7 @@ const GradingPanel = () => {
 
                         {scoreModalRegistration && scoreModalForm && (
                             <div className="rmuts-overlay" onClick={()=>busyId!==scoreModalRegistration.registration_id&&setScoreModalId(null)}>
-                                <div className="rmuts-modal" onClick={event=>event.stopPropagation()} style={{maxWidth:720,width:'calc(100vw - 32px)',padding:0,overflow:'hidden'}}>
+                                <div className="rmuts-modal" role="dialog" aria-modal="true" onClick={event=>event.stopPropagation()} style={{maxWidth:720,width:'calc(100vw - 32px)',padding:0,overflow:'hidden'}}>
                                     <div style={{background:'linear-gradient(135deg,#0D1E4A,#1A2F6E)',color:'white',padding:'16px 20px',display:'flex',justifyContent:'space-between',gap:12}}>
                                         <div><div style={{fontSize:17,fontWeight:700}}>✍️ บันทึกและประกาศผลสอบ</div><div style={{fontSize:12,opacity:0.75,marginTop:3}}>{scoreModalRegistration.course_name}</div></div>
                                         <button onClick={()=>setScoreModalId(null)} disabled={busyId===scoreModalRegistration.registration_id} style={{background:'none',border:0,color:'white',fontSize:22,cursor:'pointer'}}>×</button>

@@ -124,7 +124,7 @@ const CourseHistoryCard = ({ group, onApplyRetake, onOpenCertificate }) => {
                                         )}
 
                                         {/* เหตุผลสอบซ่อม */}
-                                        {attempt.is_retake && attempt.retake_reason && (
+                                        {Boolean(attempt.is_retake) && attempt.retake_reason && (
                                             <div style={{ marginTop:6, fontSize:11.5, color:'#92400E', background:'#FEF3C7', borderRadius:4, padding:'4px 8px' }}>
                                                 📝 เหตุผลสอบซ่อม: {attempt.retake_reason}
                                             </div>
@@ -347,7 +347,7 @@ const StudentDashboard = () => {
                 {/* Modal สมัครสอบซ่อม */}
                 {retakeModal && (
                     <div className="rmuts-overlay" onClick={()=>setRetakeModal(null)}>
-                        <div className="rmuts-modal" onClick={e=>e.stopPropagation()} style={{ maxWidth:480 }}>
+                        <div className="rmuts-modal" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()} style={{ maxWidth:480 }}>
                             <div style={{ borderBottom:'3px solid #F5A800', paddingBottom:14, marginBottom:18 }}>
                                 <div style={{ fontSize:16, fontWeight:700, color:'#1a2f6e' }}>🔄 สมัครสอบซ่อม</div>
                                 <div style={{ fontSize:13, color:'#64748b', marginTop:4 }}>{retakeModal.group.course_name}</div>

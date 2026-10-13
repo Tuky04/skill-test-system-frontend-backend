@@ -1,0 +1,71 @@
+/* ═══════════════════════════════════════════════════════════════
+   Navbar และ layout ที่ปรับตามขนาดจอ (โหลดหลัง theme.css เสมอ ดู src/index.js)
+   ═══════════════════════════════════════════════════════════════ */
+.rmuts-topbar {
+  background: var(--rmuts-gold); padding: 0 24px; min-height: var(--rmuts-topbar-h);
+  display: flex; align-items: center; gap: 10px;
+}
+.rmuts-topbar__seal { width: 26px; height: 26px; object-fit: contain; mix-blend-mode: multiply; flex-shrink: 0; }
+.rmuts-topbar__name { font-family: var(--rmuts-font-serif); font-size: 12px; font-weight: 700; color: var(--rmuts-navy); line-height: 1.3; }
+.rmuts-topbar__sub { font-size: 10px; color: var(--rmuts-navy); opacity: 0.75; line-height: 1.3; }
+
+.rmuts-nav {
+  background: var(--rmuts-navy); min-height: var(--rmuts-navbar-h); padding: 6px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border-bottom: 3px solid var(--rmuts-gold); box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  position: sticky; top: 0; z-index: 99;
+}
+.rmuts-nav__brand {
+  display: flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer;
+  text-align: left; color: inherit; font-family: inherit; min-width: 0;
+}
+.rmuts-nav__seal { width: 32px; height: 32px; object-fit: contain; mix-blend-mode: screen; filter: brightness(1.2); flex-shrink: 0; }
+.rmuts-nav__title { display: block; font-family: var(--rmuts-font-serif); font-size: 14px; font-weight: 600; color: var(--rmuts-gold); line-height: 1.3; }
+.rmuts-nav__role { display: block; font-size: 11px; color: rgba(245,168,0,0.75); }
+.rmuts-nav__toggle {
+  display: none; background: rgba(255,255,255,0.12); color: #fff; border: 0; border-radius: 8px;
+  width: 44px; height: 44px; align-items: center; justify-content: center; cursor: pointer;
+}
+.rmuts-nav__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rmuts-nav__user { font-size: 13px; color: rgba(255,255,255,0.85); margin-right: 4px; }
+.rmuts-nav__btn {
+  background: rgba(255,255,255,0.12); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px;
+  min-height: 36px; cursor: pointer; font-family: var(--rmuts-font); font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.rmuts-nav__btn:hover { background: rgba(255,255,255,0.2); }
+.rmuts-nav__btn--soft { background: rgba(255,255,255,0.1); }
+.rmuts-nav__btn--gold { background: var(--rmuts-gold); color: var(--rmuts-navy); }
+.rmuts-nav__btn--gold:hover { background: #ffb81f; }
+.rmuts-nav__btn--danger { background: #D63B2B; }
+.rmuts-nav__btn--danger:hover { background: #E74C3C; }
+
+/* โฟกัสด้วยคีย์บอร์ดต้องมองเห็นได้ทุกจุด (หลายช่องกรอกตั้ง outline:none ไว้) */
+:focus-visible { outline: 2px solid var(--rmuts-gold); outline-offset: 2px; }
+.rmuts-input:focus-visible { outline: none; border-color: var(--rmuts-navy); box-shadow: 0 0 0 3px rgba(26,47,110,0.25); }
+
+.rmuts-login-grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; width: 100%; max-width: 1100px; align-items: start; }
+.rmuts-side-grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+
+@media (max-width: 900px) {
+  .rmuts-login-grid, .rmuts-side-grid { grid-template-columns: minmax(0, 1fr); }
+  .rmuts-page__body { padding: 20px 14px 32px; }
+}
+
+@media (max-width: 768px) {
+  .rmuts-topbar { padding: 4px 14px; }
+  .rmuts-topbar__sub { display: none; }
+  .rmuts-nav { padding: 6px 14px; }
+  .rmuts-nav__toggle { display: inline-flex; }
+  .rmuts-nav__actions { display: none; width: 100%; flex-direction: column; align-items: stretch; padding: 8px 0 6px; }
+  .rmuts-nav__actions.is-open { display: flex; }
+  .rmuts-nav__user { margin: 0 0 4px; }
+  .rmuts-nav__btn { min-height: 44px; justify-content: center; font-size: 14px; }
+  .rmuts-modal { padding: 20px 16px; }
+  .rmuts-card { padding: 16px; }
+  .rmuts-tabs { overflow-x: auto; }
+}
+
+/* ช่องกรอกในกริดต้องหดได้ (ค่าเริ่มต้นของ grid item ทำให้ <input type=date> ล้นกรอบในฟอร์มแคบ เช่น ฟอร์มเพิ่มวิชา) */
+.rmuts-form-group { min-width: 0; }
+.rmuts-page__body input, .rmuts-page__body select, .rmuts-page__body textarea { min-width: 0; max-width: 100%; }

@@ -137,7 +137,7 @@ const ScoreCorrection = () => {
 
                 {editing && (
                     <div className="rmuts-overlay" onClick={() => !saving && setEditing(null)}>
-                        <div className="rmuts-modal" style={{ maxWidth: 560 }} onClick={(event) => event.stopPropagation()}>
+                        <div className="rmuts-modal" role="dialog" aria-modal="true" style={{ maxWidth: 560 }} onClick={(event) => event.stopPropagation()}>
                             <div style={{ borderBottom: '3px solid #F5A800', paddingBottom: 12, marginBottom: 16 }}>
                                 <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2f6e' }}>✏️ แก้ไขคะแนน</div>
                                 <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{editing.title}{editing.full_name} — {editing.course_name}</div>

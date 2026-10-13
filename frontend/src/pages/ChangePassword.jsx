@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import RmutsNavbar from '../components/RmutsNavbar';
 import API, { clearAuth } from '../services/api';
 import '../styles/theme.css';
+import Icon from '../components/Icon';
 import { goTo } from '../utils/navigation';
 import { getRole } from '../services/session';
 import { passwordProblem } from '../utils/password';
@@ -60,7 +61,7 @@ const ChangePassword = () => {
                             <div key={f.name} className="rmuts-form-group">
                                 <label className="rmuts-label">{f.label} <span>*</span></label>
                                 <div className="rmuts-input-wrap">
-                                    <i className="ti ti-lock rmuts-input-icon" aria-hidden="true"/>
+                                    <Icon name="lock" className="rmuts-input-icon" />
                                     <input type="password" name={f.name} value={form[f.name]} onChange={handleChange} required className="rmuts-input"/>
                                 </div>
                             </div>

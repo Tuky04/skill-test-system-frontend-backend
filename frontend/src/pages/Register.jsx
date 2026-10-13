@@ -305,17 +305,17 @@ const Register = () => {
                         </div>
 
                         <div>
-                            <label style={S.label}>รหัสนักศึกษามหาวิทยาลัย <span style={S.req}>*</span></label>
-                            <input style={S.input} name="university_student_code" value={form.university_student_code}
+                            <label style={S.label} htmlFor="reg-university_student_code">รหัสนักศึกษามหาวิทยาลัย <span style={S.req}>*</span></label>
+                            <input id="reg-university_student_code" style={S.input} name="university_student_code" value={form.university_student_code}
                                 onChange={e=>setForm(prev=>({...prev, university_student_code:e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')}))}
                                 placeholder="เช่น 1664041234567" maxLength={30} autoComplete="off" />
                         </div>
 
                         {/* คำนำหน้า + ชื่อ */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0 12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(110px, 140px) minmax(0, 1fr)', gap: '0 12px' }}>
                             <div>
-                                <label style={S.label}>คำนำหน้า <span style={S.req}>*</span></label>
-                                <select style={S.input} name="title" value={form.title} onChange={handleChange}>
+                                <label style={S.label} htmlFor="reg-title">คำนำหน้า <span style={S.req}>*</span></label>
+                                <select id="reg-title" style={S.input} name="title" value={form.title} onChange={handleChange}>
                                     <option value="">-- เลือก --</option>
                                     <option>นาย</option>
                                     <option>นาง</option>
@@ -323,8 +323,8 @@ const Register = () => {
                                 </select>
                             </div>
                             <div>
-                                <label style={S.label}>ชื่อ-นามสกุล <span style={S.req}>*</span></label>
-                                <input style={S.input} name="full_name" value={form.full_name}
+                                <label style={S.label} htmlFor="reg-full_name">ชื่อ-นามสกุล <span style={S.req}>*</span></label>
+                                <input id="reg-full_name" style={S.input} name="full_name" value={form.full_name}
                                     onChange={handleChange} placeholder="สมชาย ใจดี" />
                             </div>
                         </div>
@@ -332,13 +332,13 @@ const Register = () => {
                         {/* เลขบัตร + วันเกิด */}
                         <div style={S.grid2}>
                             <div>
-                                <label style={S.label}>เลขบัตรประชาชน 13 หลัก <span style={S.req}>*</span></label>
-                                <input style={S.input} name="id_card" value={form.id_card}
+                                <label style={S.label} htmlFor="reg-id_card">เลขบัตรประชาชน 13 หลัก <span style={S.req}>*</span></label>
+                                <input id="reg-id_card" style={S.input} name="id_card" value={form.id_card}
                                     onChange={handleChange} placeholder="1234567890123" maxLength={13} />
                             </div>
                             <div>
-                                <label style={S.label}>วันเกิด <span style={S.req}>*</span></label>
-                                <input style={S.input} name="birth_date" type="date"
+                                <label style={S.label} htmlFor="reg-birth_date">วันเกิด <span style={S.req}>*</span></label>
+                                <input id="reg-birth_date" style={S.input} name="birth_date" type="date"
                                     value={form.birth_date} onChange={handleChange} />
                             </div>
                         </div>
@@ -346,8 +346,8 @@ const Register = () => {
                         {/* เพศ + สัญชาติ */}
                         <div style={S.grid2}>
                             <div>
-                                <label style={S.label}>เพศ <span style={S.req}>*</span></label>
-                                <select style={S.input} name="gender" value={form.gender} onChange={handleChange}>
+                                <label style={S.label} htmlFor="reg-gender">เพศ <span style={S.req}>*</span></label>
+                                <select id="reg-gender" style={S.input} name="gender" value={form.gender} onChange={handleChange}>
                                     <option value="">-- เลือกเพศ --</option>
                                     <option>ชาย</option>
                                     <option>หญิง</option>
@@ -355,23 +355,23 @@ const Register = () => {
                                 </select>
                             </div>
                             <div>
-                                <label style={S.label}>สัญชาติ</label>
-                                <input style={S.input} name="nationality" value={form.nationality}
+                                <label style={S.label} htmlFor="reg-nationality">สัญชาติ</label>
+                                <input id="reg-nationality" style={S.input} name="nationality" value={form.nationality}
                                     onChange={handleChange} placeholder="ไทย" />
                             </div>
                         </div>
 
                         {/* เบอร์โทร */}
                         <div>
-                            <label style={S.label}>เบอร์โทรศัพท์ <span style={S.req}>*</span></label>
-                            <input style={S.input} name="phone" value={form.phone}
+                            <label style={S.label} htmlFor="reg-phone">เบอร์โทรศัพท์ <span style={S.req}>*</span></label>
+                            <input id="reg-phone" style={S.input} name="phone" value={form.phone}
                                 onChange={handleChange} placeholder="0812345678" maxLength={10} />
                         </div>
 
                         {/* ที่อยู่ */}
                         <div>
-                            <label style={S.label}>ที่อยู่ปัจจุบัน <span style={S.req}>*</span></label>
-                            <textarea style={{ ...S.input, height: 80, resize: 'vertical' }}
+                            <label style={S.label} htmlFor="reg-address">ที่อยู่ปัจจุบัน <span style={S.req}>*</span></label>
+                            <textarea id="reg-address" style={{ ...S.input, height: 80, resize: 'vertical' }}
                                 name="address" value={form.address} onChange={handleChange}
                                 placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" />
                         </div>
@@ -396,16 +396,16 @@ const Register = () => {
                             <div style={S.sectionTitle}>🎓 ข้อมูลการศึกษา</div>
                             <div style={S.grid2}>
                                 <div>
-                                    <label style={S.label}>ระดับการศึกษาสูงสุด <span style={S.req}>*</span></label>
-                                    <select style={S.input} name="education_level"
+                                    <label style={S.label} htmlFor="reg-education_level">ระดับการศึกษาสูงสุด <span style={S.req}>*</span></label>
+                                    <select id="reg-education_level" style={S.input} name="education_level"
                                         value={form.education_level} onChange={handleChange}>
                                         <option value="">-- เลือกระดับการศึกษา --</option>
                                         {EDUCATION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={S.label}>สาขา / วิชาเอก <span style={S.req}>*</span></label>
-                                    <input style={S.input} name="education_major"
+                                    <label style={S.label} htmlFor="reg-education_major">สาขา / วิชาเอก <span style={S.req}>*</span></label>
+                                    <input id="reg-education_major" style={S.input} name="education_major"
                                         value={form.education_major} onChange={handleChange}
                                         placeholder="วิทยาการคอมพิวเตอร์" />
                                 </div>
@@ -416,8 +416,8 @@ const Register = () => {
                         <div style={S.sectionBox}>
                             <div style={S.sectionTitle}>💼 สถานะการทำงาน</div>
                             <div>
-                                <label style={S.label}>สถานะการทำงาน <span style={S.req}>*</span></label>
-                                <select style={S.input} name="employment_status"
+                                <label style={S.label} htmlFor="reg-employment_status">สถานะการทำงาน <span style={S.req}>*</span></label>
+                                <select id="reg-employment_status" style={S.input} name="employment_status"
                                     value={form.employment_status} onChange={handleChange}>
                                     <option value="">-- เลือกสถานะ --</option>
                                     {EMPLOYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -428,21 +428,21 @@ const Register = () => {
                                 <div>
                                     <div style={S.grid2}>
                                         <div>
-                                            <label style={S.label}>อาชีพ/ตำแหน่ง</label>
-                                            <input style={S.input} name="current_occupation"
+                                            <label style={S.label} htmlFor="reg-current_occupation">อาชีพ/ตำแหน่ง</label>
+                                            <input id="reg-current_occupation" style={S.input} name="current_occupation"
                                                 value={form.current_occupation} onChange={handleChange}
                                                 placeholder="นักพัฒนาซอฟต์แวร์" />
                                         </div>
                                         <div>
-                                            <label style={S.label}>ประสบการณ์ทำงาน (ปี)</label>
-                                            <input style={S.input} name="work_experience_years"
+                                            <label style={S.label} htmlFor="reg-work_experience_years">ประสบการณ์ทำงาน (ปี)</label>
+                                            <input id="reg-work_experience_years" style={S.input} name="work_experience_years"
                                                 type="number" min="0" max="50"
                                                 value={form.work_experience_years} onChange={handleChange} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label style={S.label}>รายได้เฉลี่ยต่อเดือน</label>
-                                        <select style={S.input} name="average_income"
+                                        <label style={S.label} htmlFor="reg-average_income">รายได้เฉลี่ยต่อเดือน</label>
+                                        <select id="reg-average_income" style={S.input} name="average_income"
                                             value={form.average_income} onChange={handleChange}>
                                             <option value="">-- เลือกช่วงรายได้ --</option>
                                             <option>ต่ำกว่า 10,000</option>
@@ -461,8 +461,8 @@ const Register = () => {
                         <div style={S.sectionBox}>
                             <div style={S.sectionTitle}>📋 ข้อมูลการสมัครสอบ (ตามใบสมัคร กพร.)</div>
                             <div style={{ marginBottom: 14 }}>
-                                <label style={S.label}>ประเภทผู้สมัคร <span style={S.req}>*</span></label>
-                                <select style={S.input} name="applicant_type" value={form.applicant_type} onChange={handleChange}>
+                                <label style={S.label} htmlFor="reg-applicant_type">ประเภทผู้สมัคร <span style={S.req}>*</span></label>
+                                <select id="reg-applicant_type" style={S.input} name="applicant_type" value={form.applicant_type} onChange={handleChange}>
                                     <option value="">-- เลือกประเภทผู้สมัคร --</option>
                                     <option value="รับฝึกจาก กพร.">รับฝึกจาก กพร.</option>
                                     <option value="จากสถานศึกษา">จากสถานศึกษา</option>
@@ -472,8 +472,8 @@ const Register = () => {
                                 </select>
                             </div>
                             <div style={{ marginBottom: 14 }}>
-                                <label style={S.label}>สถานภาพแรงงาน</label>
-                                <select style={S.input} name="work_status" value={form.work_status} onChange={handleChange}>
+                                <label style={S.label} htmlFor="reg-work_status">สถานภาพแรงงาน</label>
+                                <select id="reg-work_status" style={S.input} name="work_status" value={form.work_status} onChange={handleChange}>
                                     <option value="">-- เลือกสถานภาพ --</option>
                                     <option value="ทำงาน">ทำงาน (มีงานทำ)</option>
                                     <option value="ไม่ทำงาน">ไม่ทำงาน / ว่างงาน</option>
@@ -485,8 +485,8 @@ const Register = () => {
                             </div>
                             {form.work_status === 'ทำงาน' && (<>
                                 <div style={{ marginBottom: 14 }}>
-                                    <label style={S.label}>กลุ่มอุตสาหกรรมที่ทำงาน</label>
-                                    <select style={S.input} name="industry_group" value={form.industry_group} onChange={handleChange}>
+                                    <label style={S.label} htmlFor="reg-industry_group">กลุ่มอุตสาหกรรมที่ทำงาน</label>
+                                    <select id="reg-industry_group" style={S.input} name="industry_group" value={form.industry_group} onChange={handleChange}>
                                         <option value="">-- เลือกกลุ่มอุตสาหกรรม --</option>
                                         <option value="การปรุงอาหาร">การปรุงอาหาร</option>
                                         <option value="เกษตรกรรมและเทคโนโลยีชีวภาพ">เกษตรกรรมและเทคโนโลยีชีวภาพ</option>
@@ -502,8 +502,8 @@ const Register = () => {
                                     </select>
                                 </div>
                                 <div style={{ marginBottom: 0 }}>
-                                    <label style={S.label}>รายได้ต่อเดือน (บาท)</label>
-                                    <select style={S.input} name="monthly_income" value={form.monthly_income} onChange={handleChange}>
+                                    <label style={S.label} htmlFor="reg-monthly_income">รายได้ต่อเดือน (บาท)</label>
+                                    <select id="reg-monthly_income" style={S.input} name="monthly_income" value={form.monthly_income} onChange={handleChange}>
                                         <option value="">-- เลือกช่วงรายได้ --</option>
                                         <option value="1-5000">1 – 5,000 บาท</option>
                                         <option value="5001-9000">5,001 – 9,000 บาท</option>
@@ -522,27 +522,27 @@ const Register = () => {
                             <div style={S.sectionTitle}>🔑 ข้อมูลสำหรับเข้าสู่ระบบ</div>
                             <div style={S.grid2}>
                                 <div>
-                                    <label style={S.label}>ชื่อผู้ใช้ <span style={S.req}>*</span></label>
-                                    <input style={S.input} name="username" value={form.username}
+                                    <label style={S.label} htmlFor="reg-username">ชื่อผู้ใช้ <span style={S.req}>*</span></label>
+                                    <input id="reg-username" style={S.input} name="username" value={form.username}
                                         onChange={handleChange} placeholder="somchai_d (ขั้นต่ำ 4 ตัว)" />
                                 </div>
                                 <div>
-                                    <label style={S.label}>อีเมล <span style={S.req}>*</span></label>
-                                    <input style={S.input} name="email" type="email"
+                                    <label style={S.label} htmlFor="reg-email">อีเมล <span style={S.req}>*</span></label>
+                                    <input id="reg-email" style={S.input} name="email" type="email"
                                         value={form.email} onChange={handleChange}
                                         placeholder="somchai@email.com" />
                                 </div>
                             </div>
                             <div style={S.grid2}>
                                 <div>
-                                    <label style={S.label}>รหัสผ่าน <span style={S.req}>*</span></label>
-                                    <input style={S.input} name="password" type="password"
+                                    <label style={S.label} htmlFor="reg-password">รหัสผ่าน <span style={S.req}>*</span></label>
+                                    <input id="reg-password" style={S.input} name="password" type="password"
                                         value={form.password} onChange={handleChange}
                                         placeholder="อย่างน้อย 8 ตัวอักษร" />
                                 </div>
                                 <div>
-                                    <label style={S.label}>ยืนยันรหัสผ่าน <span style={S.req}>*</span></label>
-                                    <input
+                                    <label style={S.label} htmlFor="reg-confirm_password">ยืนยันรหัสผ่าน <span style={S.req}>*</span></label>
+                                    <input id="reg-confirm_password"
                                         style={{
                                             ...S.input,
                                             borderColor: form.confirm_password && form.confirm_password !== form.password
@@ -673,10 +673,10 @@ const S = {
     page: {
         minHeight: '100vh', background: '#F4F6F7',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '40px 16px',
+        padding: '24px 12px',
     },
     card: {
-        background: 'white', borderRadius: 12, padding: '36px 40px',
+        background: 'white', borderRadius: 12, padding: 'clamp(18px, 5vw, 40px)',
         width: '100%', maxWidth: 700,
         boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
     },
@@ -691,7 +691,7 @@ const S = {
         boxSizing: 'border-box', marginBottom: 16, outline: 'none',
         fontFamily: 'inherit',
     },
-    grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' },
+    grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0 16px' },
     dropzone: {
         border: '2px dashed', borderRadius: 8, padding: '24px 16px',
         textAlign: 'center', transition: 'all 0.2s',

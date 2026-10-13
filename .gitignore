@@ -14,3 +14,6 @@ node_modules/
 *.zip
 *.log
 .claude/worktrees/
+
+# แพ็กเกจที่สร้างจาก deploy/make-package.js
+dist/
