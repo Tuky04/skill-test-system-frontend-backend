@@ -59,6 +59,7 @@ const upload = multer({
     { name: 'doc_id_card', maxCount: 1 },
     { name: 'doc_education', maxCount: 1 },
     { name: 'doc_photo', maxCount: 1 },
+    { name: 'payment_slip', maxCount: 1 },
 ]);
 
 const handleUpload = (req, res, next) => {

@@ -20,8 +20,13 @@ exports.downloadDocument = async (req, res) => {
                  UNION
                  SELECT s.user_id FROM student_document_versions v JOIN students s ON s.student_id = v.student_id
                  WHERE v.filename = ?
+                 UNION
+                 SELECT s.user_id FROM payments p
+                 JOIN registrations r ON r.registration_id = p.registration_id
+                 JOIN students s ON s.student_id = r.student_id
+                 WHERE p.slip_filename = ?
              ) owners LIMIT 1`,
-            [filename, filename, filename, filename]
+            [filename, filename, filename, filename, filename]
         );
         if (!owner) return res.status(404).json({ success: false, message: 'ไม่พบเอกสาร' });
         if (req.user.role === 'student' && Number(owner.user_id) !== Number(req.user.id)) {

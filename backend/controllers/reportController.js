@@ -26,6 +26,13 @@ exports.getStats = async (req, res) => {
              FROM scores sc JOIN registrations r ON r.registration_id = sc.registration_id
              WHERE r.result_published_at IS NOT NULL`
         );
+        const [[paymentStats]] = await db.query(
+            `SELECT SUM(payment_status = 'ชำระแล้ว' AND amount > 0) AS paid_count,
+                    COALESCE(SUM(CASE WHEN payment_status = 'ชำระแล้ว' THEN amount ELSE 0 END), 0) AS paid_total,
+                    SUM(payment_status = 'รอตรวจสลิป') AS pending_review,
+                    SUM(payment_status IN ('รอชำระเงิน', 'สลิปไม่ผ่าน')) AS unpaid
+             FROM payments`
+        );
         const [byCourse] = await db.query(
             `SELECT c.course_name, COUNT(r.registration_id) AS total,
                     SUM(r.result_published_at IS NOT NULL) AS scored,
@@ -39,6 +46,12 @@ exports.getStats = async (req, res) => {
         return res.json({
             success: true,
             data: {
+                payments: {
+                    paid_count: Number(paymentStats?.paid_count || 0),
+                    paid_total: Number(paymentStats?.paid_total || 0),
+                    pending_review: Number(paymentStats?.pending_review || 0),
+                    unpaid: Number(paymentStats?.unpaid || 0),
+                },
                 total_students: Number(studentStats.total || 0),
                 pending_verify: Number(studentStats.pending || 0),
                 approved_students: Number(studentStats.approved || 0),

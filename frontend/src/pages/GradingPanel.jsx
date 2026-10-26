@@ -74,6 +74,18 @@ const StatusBadge = ({ s }) => {
     return <span style={{ background:bg, color, borderRadius:99, padding:'3px 10px', fontSize:11.5, fontWeight:600, whiteSpace:'nowrap' }}>{s||'—'}</span>;
 };
 
+// ── สถานะการชำระเงินของใบสมัคร ───────────────────────────────
+const PAY_BADGE = {
+    'รอชำระเงิน': ['#FEF9E7', '#7D6608', 'รอชำระเงิน'],
+    'รอตรวจสลิป': ['#EFF6FF', '#1D4ED8', 'รอตรวจสลิป'],
+    'ชำระแล้ว': ['#EAFAF1', '#1E8449', 'ชำระแล้ว'],
+    'สลิปไม่ผ่าน': ['#FADBD8', '#78281F', 'สลิปไม่ผ่าน'],
+};
+const PaymentBadge = ({ s }) => {
+    const [bg, color, label] = PAY_BADGE[s] || ['#F4F6F7', '#566573', '—'];
+    return <span style={{ background:bg, color, borderRadius:99, padding:'3px 10px', fontSize:11.5, fontWeight:600, whiteSpace:'nowrap' }}>{label}</span>;
+};
+
 // ── Main ──────────────────────────────────────────────────────
 const GradingPanel = () => {
     const [allApps, setAllApps]     = useState([]);
@@ -88,6 +100,9 @@ const GradingPanel = () => {
     const [pendingDocumentCount, setPendingDocumentCount] = useState(0);
     const [newApplicantPopup, setNewApplicantPopup] = useState(null);
     const [truncatedTotal, setTruncatedTotal] = useState(0);
+    const [payModalId, setPayModalId] = useState(null);
+    const [slipPreview, setSlipPreview] = useState({ url: '', type: '', loading: false, error: '' });
+    const [payNote, setPayNote] = useState('');
 
     // ── ตัวกรอง Tab 1: ใบสมัคร ──
     const [appSearch, setAppSearch]   = useState('');
@@ -216,6 +231,32 @@ const GradingPanel = () => {
         } catch (error) { showMsg(error.response?.data?.message||'ไม่สามารถเปลี่ยนสถานะใบสมัครได้','error'); }
         finally { setBusyId(null); }
     };
+    const closePayModal = () => {
+        setPayModalId(null); setPayNote('');
+        setSlipPreview(previous => { if (previous.url) URL.revokeObjectURL(previous.url); return { url: '', type: '', loading: false, error: '' }; });
+    };
+    const openPayModal = async (registration) => {
+        setPayModalId(registration.registration_id); setPayNote('');
+        setSlipPreview({ url: '', type: '', loading: true, error: '' });
+        try {
+            const response = await API.get(`/documents/${encodeURIComponent(registration.slip_filename)}`, { responseType:'blob' });
+            // blob URL ไม่มีนามสกุลไฟล์ จึงตัดสินว่าเป็น PDF จากชนิดไฟล์ที่เซิร์ฟเวอร์ส่งมา
+            setSlipPreview({ url: URL.createObjectURL(response.data), type: String(response.data?.type || response.headers?.['content-type'] || ''), loading: false, error: '' });
+        } catch (error) {
+            setSlipPreview({ url: '', type: '', loading: false, error: error.response?.data?.message || 'ไม่สามารถเปิดสลิปได้' });
+        }
+    };
+    const handlePayment = async (regId, status) => {
+        if (status === 'สลิปไม่ผ่าน' && payNote.trim().length < 3) { showMsg('กรุณาระบุเหตุผลที่สลิปไม่ผ่าน (อย่างน้อย 3 ตัวอักษร)', 'error'); return; }
+        setBusyId(regId);
+        try {
+            const res = await API.put(`/staff/payments/${regId}/verify`, { status, note: payNote.trim() });
+            if (res.data.success) { showMsg(res.data.message); closePayModal(); await fetchData(true); }
+        } catch (error) { showMsg(error.response?.data?.message || 'ไม่สามารถบันทึกผลการตรวจสลิปได้', 'error'); }
+        finally { setBusyId(null); }
+    };
+    const payModalRegistration = allApps.find(item => item.registration_id === payModalId);
+
     const handleExamStatus = async (regId, status) => {
         if (!status || !window.confirm(`ยืนยันสถานะการสอบเป็น "${status}" ?`)) return;
         setBusyId(regId);
@@ -348,9 +389,9 @@ const GradingPanel = () => {
 
                         <div className="rmuts-table-wrap">
                             <table className="rmuts-table">
-                                <thead><tr>{['เลขใบสมัคร','รหัสนักศึกษา','ชื่อ-นามสกุล','สาขาวิชา','รอบที่','วันที่สมัคร','สถานะใบสมัคร','สถานะการสอบ','จัดการ'].map((h,i)=><th key={`${h}-${i}`}>{h}</th>)}</tr></thead>
+                                <thead><tr>{['เลขใบสมัคร','รหัสนักศึกษา','ชื่อ-นามสกุล','สาขาวิชา','รอบที่','วันที่สมัคร','สถานะใบสมัคร','การชำระเงิน','สถานะการสอบ','จัดการ'].map((h,i)=><th key={`${h}-${i}`}>{h}</th>)}</tr></thead>
                                 <tbody>
-                                    {pagedApps.length===0 ? <tr><td colSpan={9} style={{ textAlign:'center', padding:40, color:'#94a3b8' }}>ไม่พบข้อมูล</td></tr>
+                                    {pagedApps.length===0 ? <tr><td colSpan={10} style={{ textAlign:'center', padding:40, color:'#94a3b8' }}>ไม่พบข้อมูล</td></tr>
                                     : pagedApps.map(a=>(
                                         <tr key={a.registration_id}>
                                             <td><code style={{ fontSize:11.5, background:'#F4F6F7', padding:'2px 7px', borderRadius:4, letterSpacing:'0.5px' }}>{a.application_no}</code></td>
@@ -365,10 +406,14 @@ const GradingPanel = () => {
                                                 }
                                             </td><td style={{ fontSize:12, color:'#64748b', whiteSpace:'nowrap' }}>{a.registered_at?new Date(a.registered_at).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}):'—'}</td>
                                             <td><StatusBadge s={a.application_status}/></td>
+                                            <td style={{ whiteSpace:'nowrap' }}>
+                                                <PaymentBadge s={a.payment_status}/>
+                                                {a.payment_status==='รอตรวจสลิป' && <div><button onClick={()=>openPayModal(a)} style={{ marginTop:4, background:'#1D4ED8', color:'white', border:'none', borderRadius:5, padding:'4px 9px', cursor:'pointer', fontSize:11.5, fontWeight:600 }}>🔎 ตรวจสลิป</button></div>}
+                                            </td>
                                             <td style={{ fontSize:12 }}>{a.exam_status||'รอสอบ'}</td>
                                             <td style={{ whiteSpace:'nowrap' }}>
                                                 {a.application_status==='รอดำเนินการ' ? <>
-                                                    <button disabled={busyId===a.registration_id} onClick={()=>handleStatus(a.registration_id,'อนุมัติสิทธิ์สอบ')} style={{ background:'#27AE60', color:'white', border:'none', borderRadius:5, padding:'6px 11px', cursor:'pointer', fontSize:11.5, fontWeight:600, marginRight:4, opacity:busyId===a.registration_id?0.6:1 }}>✓ อนุมัติ</button>
+                                                    <button disabled={busyId===a.registration_id||a.payment_status!=='ชำระแล้ว'} title={a.payment_status!=='ชำระแล้ว'?'ต้องยืนยันการชำระค่าสมัครก่อน':undefined} onClick={()=>handleStatus(a.registration_id,'อนุมัติสิทธิ์สอบ')} style={{ background:'#27AE60', color:'white', border:'none', borderRadius:5, padding:'6px 11px', cursor:'pointer', fontSize:11.5, fontWeight:600, marginRight:4, opacity:busyId===a.registration_id?0.6:1 }}>✓ อนุมัติ</button>
                                                     <button disabled={busyId===a.registration_id} onClick={()=>handleStatus(a.registration_id,'ปฏิเสธเอกสาร')} style={{ background:'#E74C3C', color:'white', border:'none', borderRadius:5, padding:'6px 11px', cursor:'pointer', fontSize:11.5, fontWeight:600, opacity:busyId===a.registration_id?0.6:1 }}>✗ ปฏิเสธ</button>
                                                 </> :
                                                     <button disabled={busyId===a.registration_id||!!a.result_published_at} onClick={()=>handleStatus(a.registration_id,'รอดำเนินการ')} style={{ background:'#64748B', color:'white', border:'none', borderRadius:5, padding:'6px 10px', cursor:a.result_published_at?'not-allowed':'pointer', fontSize:11.5, opacity:(busyId===a.registration_id||a.result_published_at)?0.5:1 }}>↺ ส่งกลับรอตรวจ</button>
@@ -505,6 +550,41 @@ const GradingPanel = () => {
                         )}
                     </div>
                 )}
+                        {payModalRegistration && (
+                            <div className="rmuts-overlay" onClick={()=>busyId!==payModalRegistration.registration_id&&closePayModal()}>
+                                <div className="rmuts-modal" role="dialog" aria-modal="true" aria-label="ตรวจสลิปการชำระเงิน" onClick={event=>event.stopPropagation()} style={{maxWidth:760,width:'calc(100vw - 32px)',padding:0,overflow:'hidden'}}>
+                                    <div style={{background:'linear-gradient(135deg,#0D1E4A,#1A2F6E)',color:'white',padding:'16px 20px',display:'flex',justifyContent:'space-between',gap:12}}>
+                                        <div><div style={{fontSize:17,fontWeight:700}}>🔎 ตรวจสลิปการชำระเงิน</div><div style={{fontSize:12,opacity:0.75,marginTop:3}}>{payModalRegistration.course_name}</div></div>
+                                        <button aria-label="ปิด" onClick={closePayModal} disabled={busyId===payModalRegistration.registration_id} style={{background:'none',border:0,color:'white',fontSize:22,cursor:'pointer'}}>×</button>
+                                    </div>
+                                    <div style={{padding:20}}>
+                                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8,background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:9,padding:'11px 13px',marginBottom:14,fontSize:12}}>
+                                            <div><span style={{color:'#64748B'}}>ผู้สมัคร</span><br/><strong>{payModalRegistration.title}{payModalRegistration.full_name}</strong></div>
+                                            <div><span style={{color:'#64748B'}}>เลขใบสมัคร</span><br/><strong>{payModalRegistration.application_no}</strong></div>
+                                            <div><span style={{color:'#64748B'}}>ยอดที่ต้องชำระ</span><br/><strong style={{color:'#B45309'}}>{Number(payModalRegistration.payment_amount||0).toFixed(2)} บาท</strong></div>
+                                            <div><span style={{color:'#64748B'}}>เลขอ้างอิงที่ผู้สมัครแจ้ง</span><br/><strong>{payModalRegistration.transfer_ref||'—'}</strong></div>
+                                            <div><span style={{color:'#64748B'}}>วันเวลาที่โอน (ผู้สมัครแจ้ง)</span><br/><strong>{payModalRegistration.paid_at?new Date(payModalRegistration.paid_at).toLocaleString('th-TH'):'—'}</strong></div>
+                                            <div><span style={{color:'#64748B'}}>ส่งสลิปเมื่อ</span><br/><strong>{payModalRegistration.payment_submitted_at?new Date(payModalRegistration.payment_submitted_at).toLocaleString('th-TH'):'—'}</strong></div>
+                                        </div>
+                                        <div style={{border:'1px solid #E2E8F0',borderRadius:8,minHeight:200,display:'flex',alignItems:'center',justifyContent:'center',background:'#F1F5F9',overflow:'hidden'}}>
+                                            {slipPreview.loading && <span style={{color:'#64748B'}}>กำลังโหลดสลิป...</span>}
+                                            {slipPreview.error && <span style={{color:'#B91C1C',padding:16}}>{slipPreview.error}</span>}
+                                            {slipPreview.url && (slipPreview.type.includes('pdf')
+                                                ? <iframe src={slipPreview.url} title="สลิปการโอนเงิน" style={{width:'100%',height:420,border:'none'}}/>
+                                                : <img src={slipPreview.url} alt="สลิปการโอนเงิน" style={{maxWidth:'100%',maxHeight:420}}/>)}
+                                        </div>
+                                        <div style={{marginTop:10,fontSize:12,color:'#64748B'}}>ตรวจว่ายอด วันเวลา และบัญชีปลายทางตรงกับที่กำหนด ก่อนกดยืนยัน</div>
+                                        <label htmlFor="pay-note" style={{display:'block',marginTop:12,fontSize:12.5,fontWeight:600,color:'#475569'}}>หมายเหตุ (จำเป็นเมื่อสลิปไม่ผ่าน)</label>
+                                        <input id="pay-note" className="rmuts-input rmuts-input--no-icon" maxLength={255} value={payNote} onChange={e=>setPayNote(e.target.value)} placeholder="เช่น ยอดโอนไม่ครบ 100 บาท / สลิปไม่ชัด" style={{marginTop:4}}/>
+                                        <div style={{display:'flex',gap:10,marginTop:16}}>
+                                            <button disabled={busyId===payModalRegistration.registration_id} onClick={closePayModal} className="rmuts-btn rmuts-btn--outline" style={{flex:1}}>ปิด</button>
+                                            <button disabled={busyId===payModalRegistration.registration_id} onClick={()=>handlePayment(payModalRegistration.registration_id,'สลิปไม่ผ่าน')} style={{flex:1,padding:12,border:0,borderRadius:8,background:'#E74C3C',color:'white',fontWeight:700,cursor:'pointer'}}>❌ สลิปไม่ผ่าน</button>
+                                            <button disabled={busyId===payModalRegistration.registration_id} onClick={()=>handlePayment(payModalRegistration.registration_id,'ชำระแล้ว')} style={{flex:2,padding:12,border:0,borderRadius:8,background:'linear-gradient(135deg,#15803D,#16A34A)',color:'white',fontWeight:700,cursor:'pointer'}}>✅ ยืนยันการชำระเงิน</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
             </div>
         </div>
     );

@@ -18,6 +18,14 @@ const COURSE_STATUS = Object.freeze({
     CLOSED: 'ปิดรับสมัคร',
 });
 
+// สถานะการชำระค่าสมัครสอบ (1 ใบสมัคร = 1 รายการชำระ ไม่คืนเงินทุกกรณี)
+const PAYMENT_STATUS = Object.freeze({
+    UNPAID: 'รอชำระเงิน',
+    SUBMITTED: 'รอตรวจสลิป',
+    PAID: 'ชำระแล้ว',
+    REJECTED: 'สลิปไม่ผ่าน',
+});
+
 const EXAM_STATUS = Object.freeze({
     WAITING: 'รอสอบ',
     ATTENDED: 'เข้าสอบ',
@@ -148,6 +156,7 @@ module.exports = {
     STUDENT_STATUS,
     COURSE_STATUS,
     EXAM_STATUS,
+    PAYMENT_STATUS,
     REGISTRATION_OPTIONS,
     PASSWORD_MAX_BYTES,
     HttpError,

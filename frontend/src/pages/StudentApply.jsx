@@ -11,14 +11,17 @@ const StudentApply = () => {
     const [message, setMessage] = useState({ text: '', type: '' });
     const [studentCode, setStudentCode] = useState('');
     const [approved, setApproved] = useState(false);
+    const [fee, setFee] = useState(100);
 
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const [courseResponse, meResponse] = await Promise.all([
+                const [courseResponse, meResponse, payResponse] = await Promise.all([
                     API.get('/student/courses'),
                     API.get('/student/me'),
+                    Promise.resolve(API.get('/student/payment-info')).catch(() => null),
                 ]);
+                if (payResponse?.data?.data?.amount != null) setFee(Number(payResponse.data.data.amount));
                 if (courseResponse.data.success) setCourses(courseResponse.data.data);
                 const student = meResponse.data.student;
                 setStudentCode(student.student_code || '');
@@ -76,6 +79,9 @@ const StudentApply = () => {
         <div style={{ padding: '40px', maxWidth: '600px', margin: '40px auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontFamily: 'sans-serif' }}>
             <h2 style={{ color: '#1F4E6B', borderBottom: '2px solid #1F4E6B', paddingBottom: '10px' }}>📝 ยื่นใบสมัครเข้าทดสอบมาตรฐานฝีมือแรงงาน</h2>
             <p style={{ color: '#666' }}>รหัสผู้สมัคร: <strong>{studentCode}</strong></p>
+            <div style={{ background: '#FEF9E7', color: '#7D6608', borderRadius: '4px', padding: '10px 12px', fontSize: '14px' }}>
+                💳 ค่าสมัครสอบ <strong>{fee.toFixed(0)} บาท</strong> ต่อใบสมัคร (ชำระหลังยื่นใบสมัคร โดยโอนเงินแล้วแนบสลิปที่หน้าแดชบอร์ด) ไม่มีการคืนเงิน และการสอบซ่อมต้องชำระใหม่
+            </div>
 
             <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
                 <div style={{ marginBottom: '20px' }}>

@@ -16,6 +16,8 @@
 5. สร้าง `JWT_SECRET` และ `JWT_REFRESH_SECRET` คนละค่า ยาวอย่างน้อย 32 ตัวอักษรแบบสุ่ม
 6. Backend: รัน `npm ci`, `npm test`, `npm run create-admin` แล้วเปิดเซิร์ฟเวอร์ด้วยตัวจัดการโปรเซสที่รีสตาร์ตอัตโนมัติ (เช่น pm2 หรือ NSSM/Windows Service) แทนการรัน `npm start` ทิ้งไว้ในหน้าต่างคำสั่ง
    - ถ้าฐานข้อมูลเดิมถูกสร้างก่อนรอบตรวจสอบโค้ดล่าสุด ให้รัน `backend/migrations/004_performance_indexes.sql` เพิ่ม (ปลอดภัย รันซ้ำได้)
+   - ถ้าฐานข้อมูลเดิมยังไม่มีตาราง `payments` (ค่าสมัครสอบ) ให้รัน `backend/migrations/005_payments.sql` ใบสมัครเดิมจะถูกบันทึกเป็น "ชำระแล้ว ยอด 0" เพื่อไม่ให้ถูกบล็อก
+   - ตั้งค่า `PAYMENT_ACCOUNT_NAME`, `PAYMENT_BANK_NAME`, `PAYMENT_ACCOUNT_NO` (หรือ `PAYMENT_PROMPTPAY_ID`) ใน `.env` เป็นบัญชีของหน่วยงานก่อนเปิดรับสมัครจริง ถ้ายังว่าง ผู้สมัครจะเห็นข้อความว่ายังไม่ได้ตั้งค่าบัญชีรับเงิน
 7. Frontend: คัดลอก `.env.example` เป็น `.env`, ตั้ง `REACT_APP_API_URL`, รัน `npm ci` และ `npm run build`
 8. ตั้ง reverse proxy ให้ frontend และ API ใช้ origin ที่กำหนดใน `CORS_ORIGINS`
 9. ทดสอบ `GET /health` ต้องได้ `{"status":"ok"}`

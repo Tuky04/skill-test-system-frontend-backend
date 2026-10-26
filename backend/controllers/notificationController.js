@@ -58,6 +58,20 @@ const templates = {
         message: `ผลการทดสอบสาขา "${course_name}" ได้รับการแก้ไข กรุณาตรวจสอบคะแนนล่าสุดของคุณ`,
         link:    '/student-dashboard',
     }),
+    // ยืนยันการชำระค่าสมัครสอบ
+    payment_confirmed: (course_name) => ({
+        type:    'payment_confirmed',
+        title:   '💳 ยืนยันการชำระเงินแล้ว',
+        message: `เจ้าหน้าที่ตรวจสอบสลิปค่าสมัครสอบสาขา "${course_name}" เรียบร้อยแล้ว รอการอนุมัติสิทธิ์สอบ`,
+        link:    '/student-dashboard',
+    }),
+    // สลิปไม่ผ่าน ต้องส่งใหม่
+    payment_rejected: (course_name, note) => ({
+        type:    'payment_rejected',
+        title:   '⚠️ สลิปการชำระเงินไม่ผ่าน',
+        message: `สลิปค่าสมัครสอบสาขา "${course_name}" ไม่ผ่านการตรวจสอบ${note ? `: ${note}` : ''} กรุณาแนบสลิปใหม่`,
+        link:    '/student-dashboard',
+    }),
 };
 
 const isInvalidId = (id) => !/^\d{1,18}$/.test(String(id));

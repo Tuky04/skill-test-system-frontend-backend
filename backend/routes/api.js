@@ -20,6 +20,7 @@ const changePassword = require('../controllers/changePasswordController');
 const certificate = require('../utils/pdfGenerator');
 const documentController = require('../controllers/documentController');
 const studentRecords = require('../controllers/studentRecordsController');
+const payment = require('../controllers/paymentController');
 
 router.post('/login', auth.login);
 router.post('/auth/register', handleUpload, registration.register);
@@ -43,6 +44,8 @@ router.get('/student/me', verifyToken, requireRole('student'), student.getStuden
 router.get('/student/courses', verifyToken, requireRole('student'), student.getAvailableCourses);
 router.post('/student/apply', verifyToken, requireRole('student'), student.applyExam);
 router.post('/student/documents/resubmit', verifyToken, requireRole('student'), handleUpload, registration.resubmitDocuments);
+router.get('/student/payment-info', verifyToken, requireRole('student'), payment.getPaymentInfo);
+router.post('/student/payments/:registration_id/slip', verifyToken, requireRole('student'), handleUpload, payment.submitSlip);
 router.get('/student/exam-history', verifyToken, requireRole('student'), retake.getExamHistory);
 router.get('/student/retake-eligibility/:course_id', verifyToken, requireRole('student'), retake.checkRetakeEligibility);
 router.post('/student/apply-retake', verifyToken, requireRole('student'), retake.applyRetake);
@@ -55,6 +58,7 @@ router.get('/admin/scores/published', verifyToken, requireRole('admin'), score.l
 router.post('/admin/scores/correct', verifyToken, requireRole('admin'), score.correctScore);
 
 router.get('/staff/pending-registrations', verifyToken, requireRole('staff'), registration.getPendingRegistrations);
+router.put('/staff/payments/:registration_id/verify', verifyToken, requireRole('staff'), payment.verifyPayment);
 router.put('/staff/students/:id/verify', verifyToken, requireRole('staff'), registration.verifyStudent);
 router.get('/admin/users', verifyToken, requireRole('admin'), userManagement.getAllUsers);
 router.get('/admin/users/:user_id', verifyToken, requireRole('admin'), userManagement.getUserById);

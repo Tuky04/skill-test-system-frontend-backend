@@ -41,6 +41,14 @@ function checkNetwork() {
     }
 }
 
+function checkPayment() {
+    const { paymentInfo } = require('../utils/payment');
+    const info = paymentInfo();
+    pass('ค่าสมัครสอบ', `${info.amount} บาท (PAYMENT_AMOUNT)`);
+    if (!info.configured) warn('บัญชีรับเงิน', 'ยังไม่ได้ตั้ง PAYMENT_ACCOUNT_NAME และ PAYMENT_ACCOUNT_NO (หรือ PAYMENT_PROMPTPAY_ID) ผู้สมัครจะเห็นข้อความว่ายังไม่ได้ตั้งค่าบัญชี');
+    else pass('บัญชีรับเงิน', `${info.account_name} ${info.bank_name || ''}`.trim());
+}
+
 function checkPaths() {
     const web = process.env.FRONTEND_DIR;
     if (!web) warn('FRONTEND_DIR', 'ไม่ได้ตั้ง backend จะไม่เสิร์ฟหน้าเว็บ (ต้องมี Apache/Nginx เสิร์ฟเอง)');
@@ -66,7 +74,7 @@ async function checkDatabase() {
         pass('ฐานข้อมูล', `เชื่อมต่อสำเร็จ (${mode.version})`);
         if (/STRICT_TRANS_TABLES/.test(mode.mode)) pass('SQL strict mode', 'เปิดอยู่');
         else warn('SQL strict mode', 'ปิดอยู่ (DB_STRICT_MODE=false) ข้อมูลยาวเกินจะถูกตัดเงียบๆ');
-        const required = ['users', 'students', 'exam_courses', 'registrations', 'scores', 'certificates', 'admin_audit_logs'];
+        const required = ['users', 'students', 'exam_courses', 'registrations', 'payments', 'scores', 'certificates', 'admin_audit_logs'];
         const [tables] = await db.query('SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()');
         const have = new Set(tables.map((row) => row.name));
         const missing = required.filter((name) => !have.has(name));
@@ -107,6 +115,7 @@ async function checkSmtp() {
     checkSecrets();
     checkNetwork();
     checkPaths();
+    checkPayment();
     await checkDatabase();
     await checkSmtp();
     const icon = { PASS: '[ผ่าน]', WARN: '[เตือน]', FAIL: '[ไม่ผ่าน]' };

@@ -36,8 +36,117 @@ const AttemptBadge = ({ no, isRetake }) => (
     </span>
 );
 
+// ── ค่าสมัครสอบ: แผงชำระเงินของแต่ละใบสมัคร ──────────────────────
+const PAYMENT_BADGE = {
+    'รอชำระเงิน': ['#FEF9E7', '#7D6608', '⏳ รอชำระเงิน'],
+    'รอตรวจสลิป': ['#EFF6FF', '#1D4ED8', '🔎 ส่งสลิปแล้ว รอตรวจสอบ'],
+    'ชำระแล้ว': ['#EAFAF1', '#1E8449', '✅ ชำระเงินแล้ว'],
+    'สลิปไม่ผ่าน': ['#FADBD8', '#78281F', '⚠️ สลิปไม่ผ่าน'],
+};
+const localNow = () => {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const needsPayment = a => ['รอชำระเงิน', 'สลิปไม่ผ่าน'].includes(a.payment_status) && a.application_status !== 'ปฏิเสธเอกสาร' && Number(a.payment_amount) > 0;
+
+const PaymentPanel = ({ attempt, info, onDone, onViewSlip }) => {
+    const [file, setFile] = useState(null);
+    const [transferRef, setTransferRef] = useState('');
+    const [paidAt, setPaidAt] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const status = attempt.payment_status;
+    if (!status) return null;
+    const [bg, color, label] = PAYMENT_BADGE[status] || PAYMENT_BADGE['รอชำระเงิน'];
+    const amount = Number(attempt.payment_amount || 0);
+    const id = attempt.registration_id;
+    const canPay = needsPayment(attempt);
+
+    const submit = async (event) => {
+        event.preventDefault();
+        if (!file) { setError('กรุณาแนบไฟล์สลิปการโอนเงิน (JPG, PNG หรือ PDF)'); return; }
+        if (file.size > 5 * 1024 * 1024) { setError('ไฟล์มีขนาดเกิน 5 MB'); return; }
+        setBusy(true); setError('');
+        try {
+            const form = new FormData();
+            form.append('payment_slip', file);
+            if (transferRef.trim()) form.append('transfer_ref', transferRef.trim());
+            if (paidAt) form.append('paid_at', paidAt);
+            await API.post(`/student/payments/${id}/slip`, form);
+            setFile(null); setTransferRef(''); setPaidAt('');
+            await onDone();
+        } catch (err) {
+            setError(err.response?.data?.message || 'ไม่สามารถส่งหลักฐานการชำระเงินได้');
+        } finally { setBusy(false); }
+    };
+
+    return (
+        <div style={{ marginTop:10, background:'white', border:'1px solid #E2E8F0', borderRadius:8, padding:'10px 12px' }} data-testid={`payment-${id}`}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'#1a2f6e' }}>💳 ค่าสมัครสอบ {amount > 0 ? `${amount.toFixed(0)} บาท` : '— ไม่ต้องชำระ'}</div>
+                <span style={{ background:bg, color, borderRadius:99, padding:'2px 10px', fontSize:11.5, fontWeight:600 }}>{amount > 0 ? label : 'ไม่ต้องชำระ'}</span>
+            </div>
+            {amount === 0 && <div style={{ fontSize:11.5, color:'#64748b', marginTop:6 }}>ใบสมัครนี้สมัครไว้ก่อนเริ่มเก็บค่าสมัคร จึงไม่ต้องชำระเงิน</div>}
+
+            {status === 'สลิปไม่ผ่าน' && attempt.payment_note && (
+                <div style={{ marginTop:8, fontSize:12, background:'#FEF2F2', color:'#991B1B', borderRadius:6, padding:'6px 10px' }}>เหตุผลที่สลิปไม่ผ่าน: {attempt.payment_note}</div>
+            )}
+
+            {canPay && (
+                <form onSubmit={submit} style={{ marginTop:10 }}>
+                    {info?.configured ? (
+                        <div style={{ background:'#F8FAFC', border:'1px dashed #CBD5E1', borderRadius:6, padding:'8px 10px', fontSize:12.5, lineHeight:1.7, marginBottom:10 }}>
+                            <div><span style={{ color:'#64748b' }}>โอนเงินไปที่บัญชี:</span> <strong>{info.account_name}</strong></div>
+                            {info.bank_name && <div><span style={{ color:'#64748b' }}>ธนาคาร:</span> <strong>{info.bank_name}</strong></div>}
+                            {info.account_no && <div><span style={{ color:'#64748b' }}>เลขที่บัญชี:</span> <strong style={{ letterSpacing:1 }}>{info.account_no}</strong></div>}
+                            {info.promptpay_id && <div><span style={{ color:'#64748b' }}>พร้อมเพย์:</span> <strong>{info.promptpay_id}</strong></div>}
+                            <div><span style={{ color:'#64748b' }}>ยอดที่ต้องโอน:</span> <strong style={{ color:'#B45309' }}>{amount.toFixed(2)} บาท</strong></div>
+                            {info.note && <div style={{ color:'#64748b' }}>{info.note}</div>}
+                        </div>
+                    ) : (
+                        <div style={{ background:'#FEF9E7', color:'#7D6608', borderRadius:6, padding:'8px 10px', fontSize:12.5, marginBottom:10 }}>
+                            ยังไม่ได้ตั้งค่าบัญชีรับเงิน กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามช่องทางการชำระเงิน แล้วกลับมาแนบสลิปที่นี่
+                        </div>
+                    )}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:8 }}>
+                        <div>
+                            <label htmlFor={`pay-file-${id}`} style={{ display:'block', fontSize:12, color:'#475569', marginBottom:3 }}>แนบสลิปการโอนเงิน (JPG, PNG, PDF ไม่เกิน 5 MB)</label>
+                            <input id={`pay-file-${id}`} type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} style={{ width:'100%', fontSize:12 }}/>
+                        </div>
+                        <div>
+                            <label htmlFor={`pay-ref-${id}`} style={{ display:'block', fontSize:12, color:'#475569', marginBottom:3 }}>เลขอ้างอิงรายการ (ถ้ามี)</label>
+                            <input id={`pay-ref-${id}`} type="text" maxLength={64} value={transferRef} onChange={e => setTransferRef(e.target.value)} className="rmuts-input rmuts-input--no-icon" style={{ padding:'7px 10px', fontSize:13 }}/>
+                        </div>
+                        <div>
+                            <label htmlFor={`pay-time-${id}`} style={{ display:'block', fontSize:12, color:'#475569', marginBottom:3 }}>วันเวลาที่โอน (ถ้ามี)</label>
+                            <input id={`pay-time-${id}`} type="datetime-local" max={localNow()} value={paidAt} onChange={e => setPaidAt(e.target.value)} className="rmuts-input rmuts-input--no-icon" style={{ padding:'7px 10px', fontSize:13 }}/>
+                        </div>
+                    </div>
+                    {error && <div className="rmuts-alert rmuts-alert--error" style={{ marginTop:8 }} role="alert">{error}</div>}
+                    <button type="submit" disabled={busy} style={{ marginTop:10, background:'#1a2f6e', color:'white', border:'none', borderRadius:7, padding:'8px 18px', fontSize:13, fontWeight:600, cursor:busy ? 'not-allowed' : 'pointer', opacity:busy ? 0.7 : 1 }}>
+                        {busy ? '⏳ กำลังส่ง...' : '📤 ส่งหลักฐานการชำระเงิน'}
+                    </button>
+                    <div style={{ marginTop:6, fontSize:11, color:'#94a3b8' }}>ค่าสมัครไม่สามารถขอคืนได้ทุกกรณี การสอบซ่อมต้องชำระค่าสมัครใหม่</div>
+                </form>
+            )}
+
+            {status === 'รอตรวจสลิป' && (
+                <div style={{ marginTop:8, fontSize:12, color:'#1D4ED8' }}>
+                    ส่งหลักฐานเมื่อ {fmtDate(attempt.payment_submitted_at)} เจ้าหน้าที่จะตรวจสอบและอนุมัติสิทธิ์สอบให้ภายหลัง
+                </div>
+            )}
+            {attempt.slip_filename && amount > 0 && ['รอตรวจสลิป', 'ชำระแล้ว', 'สลิปไม่ผ่าน'].includes(status) && (
+                <button type="button" onClick={() => onViewSlip(attempt.slip_filename)} style={{ marginTop:8, background:'none', border:'1px solid #CBD5E1', borderRadius:6, padding:'4px 10px', fontSize:12, cursor:'pointer', color:'#334155' }}>
+                    🧾 ดูสลิปที่ส่ง
+                </button>
+            )}
+        </div>
+    );
+};
+
 // ── Course History Card (แสดงประวัติทุกรอบของวิชาเดียว) ────────────
-const CourseHistoryCard = ({ group, onApplyRetake, onOpenCertificate }) => {
+const CourseHistoryCard = ({ group, onApplyRetake, onOpenCertificate, paymentInfo, onPaymentChanged, onViewSlip }) => {
     const [expanded, setExpanded] = useState(true);
     const passed  = group.attempts.some(a => a.department_status === 'ได้รับวุฒิบัตร');
     const passedAttempt = group.attempts.find(a => a.department_status === 'ได้รับวุฒิบัตร');
@@ -99,6 +208,8 @@ const CourseHistoryCard = ({ group, onApplyRetake, onOpenCertificate }) => {
                                             <div><span style={{ color:'#64748b' }}>สถานะเข้าสอบ:</span> <strong>{attempt.exam_status || 'รอสอบ'}</strong></div>
                                         </div>
 
+                                        <PaymentPanel attempt={attempt} info={paymentInfo} onDone={onPaymentChanged} onViewSlip={onViewSlip}/>
+
                                         {/* ผลคะแนน */}
                                         {(attempt.theory_score != null || attempt.practical_score != null) && (
                                             <div style={{ marginTop:10, background:'white', borderRadius:6, padding:'8px 12px', border:'1px solid #E2E8F0' }}>
@@ -157,6 +268,7 @@ const StudentDashboard = () => {
     const [studentInfo, setStudentInfo]   = useState(null);
     const [historyGroups, setHistoryGroups] = useState([]);
     const [currentExam, setCurrentExam]   = useState(null);
+    const [paymentInfo, setPaymentInfo]   = useState(null);
     const [loading, setLoading]           = useState(true);
     const [error, setError]               = useState('');
 
@@ -170,10 +282,12 @@ const StudentDashboard = () => {
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
-            const [histRes, meRes] = await Promise.all([
+            const [histRes, meRes, payRes] = await Promise.all([
                 API.get('/student/exam-history'),
                 API.get('/student/me'),
+                Promise.resolve(API.get('/student/payment-info')).catch(() => null),
             ]);
+            setPaymentInfo(payRes?.data?.data || null);
             if (histRes.data.success) {
                 const groups = histRes.data.data;
                 setHistoryGroups(groups);
@@ -214,6 +328,20 @@ const StudentDashboard = () => {
         }
     };
 
+    const openSlip = async (filename) => {
+        const win = window.open('', '_blank');
+        if (!win) { setError('กรุณาอนุญาต popup เพื่อดูสลิป'); return; }
+        try {
+            const response = await API.get(`/documents/${encodeURIComponent(filename)}`, { responseType:'blob' });
+            const url = URL.createObjectURL(response.data);
+            win.location.href = url;
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (err) {
+            win.close();
+            setError(err.response?.data?.message || 'ไม่สามารถเปิดสลิปได้');
+        }
+    };
+
     const handleApplyRetake = async () => {
         if (!retakeModal) return;
         setRetakeLoading(true); setRetakeError(''); setRetakeSuccess('');
@@ -242,6 +370,7 @@ const StudentDashboard = () => {
     );
 
     const isApproved = currentExam?.application_status === 'อนุมัติสิทธิ์สอบ' && !currentExam?.result_published_at;
+    const unpaidCount = historyGroups.flatMap(g => g.attempts).filter(needsPayment).length;
 
     return (
         <div className="rmuts-page">
@@ -252,6 +381,12 @@ const StudentDashboard = () => {
             <div className="rmuts-page__body">
 
                 {error && <div className="rmuts-alert rmuts-alert--error">{error}</div>}
+
+                {unpaidCount > 0 && (
+                    <div role="status" style={{ background:'#FEF9E7', border:'1px solid #F9E79F', color:'#7D6608', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13.5 }}>
+                        💳 มี {unpaidCount} ใบสมัครที่ยังไม่ได้ชำระค่าสมัครสอบ — โอนเงินแล้วแนบสลิปในการ์ดของใบสมัครด้านล่าง เจ้าหน้าที่จะอนุมัติสิทธิ์สอบหลังตรวจสลิป
+                    </div>
+                )}
 
                 {/* ข้อมูลนักศึกษา */}
                 <div className="rmuts-card" style={{ borderLeft:'4px solid #F5A800', marginBottom:20 }}>
@@ -339,6 +474,9 @@ const StudentDashboard = () => {
                                 group={group}
                                 onApplyRetake={(g) => { setRetakeModal({ group:g }); setRetakeReason(''); setRetakeError(''); }}
                                 onOpenCertificate={openCertificate}
+                                paymentInfo={paymentInfo}
+                                onPaymentChanged={() => fetchData()}
+                                onViewSlip={openSlip}
                             />
                         ))}
                     </div>
@@ -356,6 +494,7 @@ const StudentDashboard = () => {
                             <div style={{ background:'#FEF3C7', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13, color:'#92400E', border:'1px solid #FDE68A' }}>
                                 <strong>⚠️ ข้อกำหนดการสอบซ่อม</strong><br/>
                                 การสอบซ่อมจะนับเป็นรอบใหม่ โดยเก็บประวัติทุกรอบไว้ในระบบ<br/>
+                                ค่าสมัครสอบซ่อม {Number(paymentInfo?.amount ?? 100).toFixed(0)} บาท ต้องชำระใหม่ทุกครั้ง ไม่มีการคืนเงิน<br/>
                                 ต้องได้รับการอนุมัติจากเจ้าหน้าที่ก่อนเข้าห้องสอบ
                             </div>
 

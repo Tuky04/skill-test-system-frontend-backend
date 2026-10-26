@@ -127,6 +127,15 @@ const AdminReport = () => {
                                 ]}/>
                             </div>
                             <div className="rmuts-card">
+                                <div className="rmuts-card__title">💳 ค่าสมัครสอบ</div>
+                                <div style={{ fontSize:28, fontWeight:700, color:'#15803D' }}>{Number(stats?.payments?.paid_total ?? 0).toLocaleString('th-TH')} บาท</div>
+                                <div style={{ fontSize:12, color:'#64748b', marginBottom:10 }}>ยอดที่เจ้าหน้าที่ยืนยันการชำระแล้ว ({stats?.payments?.paid_count ?? 0} ใบสมัคร)</div>
+                                <BarChart data={[
+                                    { label:'รอตรวจสลิป',        value:stats?.payments?.pending_review??0, color:'#1D4ED8' },
+                                    { label:'ยังไม่ชำระ/ไม่ผ่าน', value:stats?.payments?.unpaid??0, color:'#F5A800' },
+                                ]}/>
+                            </div>
+                            <div className="rmuts-card">
                                 <div className="rmuts-card__title">🏅 ผลการประเมิน</div>
                                 <BarChart data={[
                                     { label:'ได้รับวุฒิบัตร', value:stats?.total_passed??0, color:'#27AE60' },

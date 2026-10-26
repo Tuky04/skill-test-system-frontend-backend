@@ -45,6 +45,8 @@ const examRegistration = {
   practical_score: 0,
   deducted_score: 0,
   result_published_at: null,
+  payment_amount: '100.00',
+  payment_status: 'ชำระแล้ว',
 };
 
 beforeEach(() => {
@@ -159,4 +161,67 @@ test('the grading panel loads every page of registrations, not only the newest 1
   expect(await screen.findByText(/พบ 150 รายการ/)).toBeInTheDocument();
   expect(API.get).toHaveBeenCalledWith('/registrations', { params: { limit: 100, page: 1 } });
   expect(API.get).toHaveBeenCalledWith('/registrations', { params: { limit: 100, page: 2 } });
+});
+
+test('exam rights cannot be approved from the list until the fee has been confirmed', async () => {
+  const unpaid = { ...examRegistration, application_status: 'รอดำเนินการ', exam_status: 'รอสอบ', payment_status: 'รอตรวจสลิป', slip_filename: 'payment_slip-aa.png' };
+  API.get.mockImplementation((path) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [] } });
+    return Promise.resolve({ data: { success: true, data: [unpaid] } });
+  });
+
+  render(<GradingPanel />);
+
+  expect(await screen.findByText('APP-2026-00091')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /อนุมัติ/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /ตรวจสลิป/ })).toBeEnabled();
+});
+
+test('staff open the slip, then confirm the payment', async () => {
+  const unpaid = { ...examRegistration, application_status: 'รอดำเนินการ', exam_status: 'รอสอบ', payment_status: 'รอตรวจสลิป', slip_filename: 'payment_slip-aa.png', transfer_ref: 'REF-77' };
+  API.get.mockImplementation((path) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [] } });
+    if (path.startsWith('/documents/')) return Promise.resolve({ data: new Blob(['png'], { type: 'image/png' }), headers: {} });
+    return Promise.resolve({ data: { success: true, data: [unpaid] } });
+  });
+  API.put.mockResolvedValue({ data: { success: true, message: 'ยืนยันการชำระเงินเรียบร้อย' } });
+  global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/slip');
+  global.URL.revokeObjectURL = jest.fn();
+  const user = userEvent.setup();
+
+  render(<GradingPanel />);
+  await user.click(await screen.findByRole('button', { name: /ตรวจสลิป/ }));
+
+  expect(await screen.findByRole('dialog', { name: 'ตรวจสลิปการชำระเงิน' })).toBeInTheDocument();
+  expect(await screen.findByAltText('สลิปการโอนเงิน')).toBeInTheDocument();
+  expect(screen.getByText('REF-77')).toBeInTheDocument();
+  expect(API.get).toHaveBeenCalledWith('/documents/payment_slip-aa.png', { responseType: 'blob' });
+  await user.click(screen.getByRole('button', { name: /ยืนยันการชำระเงิน/ }));
+
+  await waitFor(() => expect(API.put).toHaveBeenCalledWith('/staff/payments/91/verify', { status: 'ชำระแล้ว', note: '' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'ตรวจสลิปการชำระเงิน' })).not.toBeInTheDocument());
+});
+
+test('rejecting a slip is blocked until the staff member writes a reason', async () => {
+  const unpaid = { ...examRegistration, application_status: 'รอดำเนินการ', exam_status: 'รอสอบ', payment_status: 'รอตรวจสลิป', slip_filename: 'payment_slip-aa.pdf' };
+  API.get.mockImplementation((path) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [] } });
+    if (path.startsWith('/documents/')) return Promise.resolve({ data: new Blob(['%PDF-1.4'], { type: 'application/pdf' }), headers: {} });
+    return Promise.resolve({ data: { success: true, data: [unpaid] } });
+  });
+  API.put.mockResolvedValue({ data: { success: true, message: 'บันทึกแล้ว' } });
+  global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/slip2');
+  global.URL.revokeObjectURL = jest.fn();
+  const user = userEvent.setup();
+
+  render(<GradingPanel />);
+  await user.click(await screen.findByRole('button', { name: /ตรวจสลิป/ }));
+  expect(await screen.findByTitle('สลิปการโอนเงิน')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /สลิปไม่ผ่าน/ }));
+  expect(await screen.findByText(/กรุณาระบุเหตุผลที่สลิปไม่ผ่าน/)).toBeInTheDocument();
+  expect(API.put).not.toHaveBeenCalled();
+
+  await user.type(screen.getByLabelText(/หมายเหตุ/), 'ยอดโอนไม่ครบ');
+  await user.click(screen.getByRole('button', { name: /สลิปไม่ผ่าน/ }));
+  await waitFor(() => expect(API.put).toHaveBeenCalledWith('/staff/payments/91/verify', { status: 'สลิปไม่ผ่าน', note: 'ยอดโอนไม่ครบ' }));
 });

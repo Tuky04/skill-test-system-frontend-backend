@@ -7,12 +7,14 @@ const {
     STUDENT_STATUS,
     COURSE_STATUS,
     EXAM_STATUS,
+    PAYMENT_STATUS,
     HttpError,
     computeCourseStatus,
     createApplicationNo,
     hasExamDatePassed,
 } = require('../utils/domain');
 const { getOrCreateSession } = require('../utils/sessions');
+const { feeAmount } = require('../utils/payment');
 
 exports.getStudentMe = async (req, res) => {
     try {
@@ -28,10 +30,13 @@ exports.getStudentMe = async (req, res) => {
                     r.attempt_no, r.is_retake, r.exam_status, r.result_published_at,
                     c.course_name, c.exam_date, c.exam_time, c.exam_location,
                     sc.theory_score, sc.practical_score, sc.deducted_score,
-                    sc.total_score, sc.department_status
+                    sc.total_score, sc.department_status,
+                    p.amount AS payment_amount, p.payment_status, p.slip_filename, p.transfer_ref,
+                    p.paid_at, p.submitted_at AS payment_submitted_at, p.verify_note AS payment_note
              FROM registrations r
              JOIN exam_courses c ON r.course_id = c.course_id
              LEFT JOIN scores sc ON r.registration_id = sc.registration_id
+             LEFT JOIN payments p ON p.registration_id = r.registration_id
              WHERE r.student_id = ? ORDER BY r.registered_at DESC`,
             [student.student_id]
         );
@@ -54,11 +59,14 @@ exports.getAllRegistrations = async (req, res) => {
                     c.course_code, c.course_name, c.exam_date, c.exam_time, c.exam_location,
                     c.theory_max_score, c.practical_max_score,
                     sc.theory_score, sc.practical_score, sc.deducted_score,
-                    sc.total_score, sc.department_status
+                    sc.total_score, sc.department_status,
+                    p.amount AS payment_amount, p.payment_status, p.slip_filename, p.transfer_ref,
+                    p.paid_at, p.submitted_at AS payment_submitted_at, p.verify_note AS payment_note
              FROM registrations r
              JOIN students s ON r.student_id = s.student_id
              JOIN exam_courses c ON r.course_id = c.course_id
              LEFT JOIN scores sc ON r.registration_id = sc.registration_id
+             LEFT JOIN payments p ON p.registration_id = r.registration_id
              ORDER BY r.registered_at DESC LIMIT ? OFFSET ?`,
             [limit, offset]
         );
@@ -84,11 +92,13 @@ exports.updateRegistrationStatus = async (req, res) => {
             const [[registration]] = await conn.query(
                 `SELECT r.registration_id, r.course_id, r.application_no, r.application_status, r.exam_status, r.result_published_at,
                         s.user_id, s.student_code, s.full_name, u.email,
-                        c.course_name, c.exam_date, c.exam_time, c.exam_location, c.max_seats
+                        c.course_name, c.exam_date, c.exam_time, c.exam_location, c.max_seats,
+                        p.payment_status
                  FROM registrations r
                  JOIN students s ON r.student_id = s.student_id
                  JOIN users u ON s.user_id = u.user_id
                  JOIN exam_courses c ON r.course_id = c.course_id
+                 LEFT JOIN payments p ON p.registration_id = r.registration_id
                  WHERE r.registration_id = ? FOR UPDATE`,
                 [registrationId]
             );
@@ -106,6 +116,10 @@ exports.updateRegistrationStatus = async (req, res) => {
                     [registration.course_id, APPLICATION_STATUS.REJECTED, registrationId]
                 );
                 if (seat.total >= registration.max_seats) throw new HttpError(409, 'ที่นั่งของวิชานี้เต็มแล้ว ไม่สามารถนำใบสมัครที่ถูกปฏิเสธกลับมาได้');
+            }
+            // อนุมัติสิทธิ์สอบได้เมื่อเจ้าหน้าที่ยืนยันการชำระค่าสมัครแล้วเท่านั้น
+            if (status === APPLICATION_STATUS.APPROVED && registration.payment_status !== PAYMENT_STATUS.PAID) {
+                throw new HttpError(409, 'ยังไม่ได้รับการยืนยันการชำระค่าสมัครสอบ กรุณาตรวจสลิปและยืนยันการชำระเงินก่อน');
             }
             const nextExamStatus = status === APPLICATION_STATUS.APPROVED ? (registration.exam_status || EXAM_STATUS.WAITING) : EXAM_STATUS.WAITING;
             await conn.query('UPDATE registrations SET application_status = ?, exam_status = ? WHERE registration_id = ?', [status, nextExamStatus, registrationId]);
@@ -238,12 +252,13 @@ exports.applyExam = async (req, res) => {
                 [sessionId, applicationNo, APPLICATION_STATUS.PENDING, existing.registration_id]
             );
         } else {
-            await conn.query(
+            const [created] = await conn.query(
                 `INSERT INTO registrations
                  (student_id, course_id, session_id, application_no, application_status, attempt_no, is_retake)
                  VALUES (?, ?, ?, ?, ?, 1, 0)`,
                 [student.student_id, courseId, sessionId, applicationNo, APPLICATION_STATUS.PENDING]
             );
+            await conn.query('INSERT INTO payments (registration_id, amount) VALUES (?, ?)', [created.insertId, feeAmount()]);
         }
         await conn.commit();
         if (student.email) {
@@ -268,7 +283,7 @@ exports.applyExam = async (req, res) => {
                 submitted_at: new Date().toLocaleString('th-TH', { timeZone: process.env.APP_TIMEZONE || 'Asia/Bangkok' }),
             }).catch((error) => console.error('[Application email]', error.message));
         }
-        return res.status(201).json({ success: true, message: 'ยื่นใบสมัครสำเร็จ กรุณารอการอนุมัติสิทธิ์', application_no: applicationNo });
+        return res.status(201).json({ success: true, message: `ยื่นใบสมัครสำเร็จ กรุณาชำระค่าสมัคร ${feeAmount()} บาทและแนบสลิปที่หน้าแดชบอร์ด แล้วรอการอนุมัติสิทธิ์`, application_no: applicationNo, payment_amount: feeAmount() });
     } catch (error) {
         if (conn) await conn.rollback().catch(() => {});
         if (error instanceof HttpError) return res.status(error.status).json({ success: false, message: error.message });
