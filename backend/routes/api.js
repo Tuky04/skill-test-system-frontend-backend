@@ -59,6 +59,7 @@ router.post('/admin/scores/correct', verifyToken, requireRole('admin'), score.co
 
 router.get('/staff/pending-registrations', verifyToken, requireRole('staff'), registration.getPendingRegistrations);
 router.put('/staff/payments/:registration_id/verify', verifyToken, requireRole('staff'), payment.verifyPayment);
+router.put('/staff/payments/:registration_id/reopen', verifyToken, requireRole('staff'), payment.reopenPayment);
 router.put('/staff/students/:id/verify', verifyToken, requireRole('staff'), registration.verifyStudent);
 router.get('/admin/users', verifyToken, requireRole('admin'), userManagement.getAllUsers);
 router.get('/admin/users/:user_id', verifyToken, requireRole('admin'), userManagement.getUserById);

@@ -150,7 +150,8 @@ const CourseHistoryCard = ({ group, onApplyRetake, onOpenCertificate, paymentInf
     const [expanded, setExpanded] = useState(true);
     const passed  = group.attempts.some(a => a.department_status === 'ได้รับวุฒิบัตร');
     const passedAttempt = group.attempts.find(a => a.department_status === 'ได้รับวุฒิบัตร');
-    const hasPending = group.attempts.some(a => !a.department_status && a.application_status === 'อนุมัติสิทธิ์สอบ');
+    // ใบสมัครที่ยังไม่ประกาศผล (รออนุมัติหรืออนุมัติแล้ว) ห้ามสมัครสอบซ่อมซ้อน
+    const hasPending = group.attempts.some(a => !a.department_status && a.application_status !== 'ปฏิเสธเอกสาร');
 
     return (
         <div style={{ border:'1px solid #E2E8F0', borderRadius:10, marginBottom:16, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.05)' }}>

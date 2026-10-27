@@ -72,6 +72,12 @@ const templates = {
         message: `สลิปค่าสมัครสอบสาขา "${course_name}" ไม่ผ่านการตรวจสอบ${note ? `: ${note}` : ''} กรุณาแนบสลิปใหม่`,
         link:    '/student-dashboard',
     }),
+    payment_reopened: (course_name, note) => ({
+        type:    'payment_reopened',
+        title:   '🔎 เจ้าหน้าที่ตรวจสลิปอีกครั้ง',
+        message: `เจ้าหน้าที่ยกเลิกผลยืนยันการชำระค่าสมัครสอบสาขา "${course_name}" เพื่อตรวจสลิปอีกครั้ง${note ? `: ${note}` : ''} ไม่ต้องแนบสลิปใหม่จนกว่าจะได้รับแจ้ง`,
+        link:    '/student-dashboard',
+    }),
 };
 
 const isInvalidId = (id) => !/^\d{1,18}$/.test(String(id));

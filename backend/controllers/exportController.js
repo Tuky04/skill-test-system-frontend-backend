@@ -119,7 +119,8 @@ const registrationSelect = `
            sc.theory_score, sc.practical_score, sc.deducted_score, sc.total_score,
            sc.university_status, sc.department_status, sc.updated_at AS score_updated_at,
            examiner.username AS examiner_username,
-           cert.certificate_no, cert.issued_at, cert.revoked_at
+           cert.certificate_no, cert.issued_at, cert.revoked_at,
+           pay.amount AS payment_amount, pay.payment_status, pay.transfer_ref, pay.verified_at AS payment_verified_at
     FROM registrations r
     JOIN students s ON s.student_id=r.student_id
     LEFT JOIN users u ON u.user_id=s.user_id
@@ -127,7 +128,8 @@ const registrationSelect = `
     LEFT JOIN exam_sessions es ON es.session_id=r.session_id
     LEFT JOIN scores sc ON sc.registration_id=r.registration_id
     LEFT JOIN users examiner ON examiner.user_id=sc.examiner_id
-    LEFT JOIN certificates cert ON cert.registration_id=r.registration_id`;
+    LEFT JOIN certificates cert ON cert.registration_id=r.registration_id
+    LEFT JOIN payments pay ON pay.registration_id=r.registration_id`;
 
 exports.getExportOptions = async (_req, res) => {
     try {

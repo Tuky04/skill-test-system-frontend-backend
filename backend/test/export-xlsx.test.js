@@ -56,11 +56,20 @@ test('XLSX workbook has practical sheets and masks national id by default', asyn
         total_score: 80,
         department_status: 'ได้รับวุฒิบัตร',
         registered_at: '2026-06-01T09:00:00Z',
+        payment_amount: '100.00',
+        payment_status: 'ชำระแล้ว',
+        transfer_ref: 'REF-1',
+        payment_verified_at: '2026-06-02T10:00:00Z',
     }];
     const workbook = _createRegistrationWorkbook(rows, { date_type:'registered' });
     assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ['รายละเอียดการสอบ', 'ข้อมูลนักศึกษา', 'สรุปรายงาน']);
     assert.equal(workbook.getWorksheet('ข้อมูลนักศึกษา').getCell('D2').value, '*********0001');
     assert.equal(workbook.getWorksheet('รายละเอียดการสอบ').autoFilter.from, 'A1');
+    const exam = workbook.getWorksheet('รายละเอียดการสอบ');
+    assert.equal(exam.getCell('AA1').value, 'ค่าสมัครสอบ (บาท)');
+    assert.equal(exam.getCell('AA2').value, 100);
+    assert.equal(exam.getCell('AB2').value, 'ชำระแล้ว');
+    assert.equal(exam.getCell('AC2').value, 'REF-1');
     const buffer = await workbook.xlsx.writeBuffer();
     assert.equal(Buffer.from(buffer).subarray(0, 2).toString(), 'PK');
 

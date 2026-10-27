@@ -208,6 +208,36 @@ test('rejecting a slip needs a reason; only slips awaiting review can be decided
     assert.equal(db.ran(/UPDATE payments/), false);
 });
 
+const reopenRoutes = (extra = {}) => [
+    userLookup,
+    [/FROM payments p\s+JOIN registrations r ON r\.registration_id = p\.registration_id\s+JOIN students s ON s\.student_id = r\.student_id\s+JOIN exam_courses c/,
+        rows({ payment_id: 11, payment_status: 'ชำระแล้ว', amount: '100.00', slip_filename: 'payment_slip-x.png', registration_id: 5,
+            application_status: 'รอดำเนินการ', user_id: STUDENT, course_name: 'Excel', ...extra })],
+    [/^\s*(UPDATE|INSERT)/i, ok()],
+];
+
+test('staff can undo a mistaken "paid" decision before exam rights are approved, with a reason that is audited', async () => {
+    db.setRoutes(reopenRoutes());
+    const noReason = await call('PUT', '/api/staff/payments/5/reopen', { auth: STAFF, body: { reason: '' } });
+    assert.equal(noReason.status, 400);
+    const asAdmin = await call('PUT', '/api/staff/payments/5/reopen', { auth: ADMIN, body: { reason: 'กดผิดรายการ' } });
+    assert.equal(asAdmin.status, 403);
+    const done = await call('PUT', '/api/staff/payments/5/reopen', { auth: STAFF, body: { reason: 'กดยืนยันผิดรายการ' } });
+    assert.equal(done.status, 200, JSON.stringify(done.json));
+    const update = db.log.find((e) => /UPDATE payments SET payment_status/.test(e.sql));
+    assert.equal(update.params[0], 'รอตรวจสลิป');
+    const audit = db.log.find((e) => /INSERT INTO admin_audit_logs/.test(e.sql));
+    assert.equal(audit.params[1], 'REOPEN_PAYMENT');
+
+    for (const [extra, label] of [[{ application_status: 'อนุมัติสิทธิ์สอบ' }, 'approved'], [{ payment_status: 'รอตรวจสลิป' }, 'waiting'], [{ amount: '0.00', slip_filename: null }, 'legacy']]) {
+        db.reset();
+        db.setRoutes(reopenRoutes(extra));
+        const refused = await call('PUT', '/api/staff/payments/5/reopen', { auth: STAFF, body: { reason: 'กดยืนยันผิดรายการ' } });
+        assert.equal(refused.status, 409, label);
+        assert.equal(db.ran(/UPDATE payments/), false, label);
+    }
+});
+
 const approvalRoutes = (paymentStatus) => [
     userLookup,
     [/FROM registrations r\s+JOIN students s ON r\.student_id = s\.student_id\s+JOIN users u/, rows({

@@ -225,3 +225,22 @@ test('rejecting a slip is blocked until the staff member writes a reason', async
   await user.click(screen.getByRole('button', { name: /สลิปไม่ผ่าน/ }));
   await waitFor(() => expect(API.put).toHaveBeenCalledWith('/staff/payments/91/verify', { status: 'สลิปไม่ผ่าน', note: 'ยอดโอนไม่ครบ' }));
 });
+
+test('a slip confirmed by mistake can be sent back for review with a reason before exam rights are approved', async () => {
+  const paid = { ...examRegistration, application_status: 'รอดำเนินการ', exam_status: 'รอสอบ', payment_status: 'ชำระแล้ว', payment_amount: '100.00', slip_filename: 'payment_slip-aa.png' };
+  API.get.mockImplementation((path) => {
+    if (path === '/staff/pending-registrations') return Promise.resolve({ data: { success: true, data: [] } });
+    return Promise.resolve({ data: { success: true, data: [paid] } });
+  });
+  API.put.mockResolvedValue({ data: { success: true, message: 'ยกเลิกผลยืนยันแล้ว' } });
+  const promptSpy = jest.spyOn(window, 'prompt').mockReturnValueOnce('ab').mockReturnValueOnce('กดยืนยันผิดรายการ');
+  const user = userEvent.setup();
+
+  render(<GradingPanel />);
+  const reopen = await screen.findByRole('button', { name: /ตรวจสลิปใหม่/ });
+  await user.click(reopen);
+  expect(API.put).not.toHaveBeenCalled();
+  await user.click(reopen);
+  await waitFor(() => expect(API.put).toHaveBeenCalledWith('/staff/payments/91/reopen', { reason: 'กดยืนยันผิดรายการ' }));
+  promptSpy.mockRestore();
+});

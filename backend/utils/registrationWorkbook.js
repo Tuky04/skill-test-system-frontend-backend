@@ -67,6 +67,10 @@ function createRegistrationWorkbook(rows, filters, options = {}) {
         { header: 'เลขวุฒิบัตร', key: 'certificate_no', width: 22 },
         { header: 'วันที่สมัคร', key: 'registered_at', width: 20 },
         { header: 'วันที่ประกาศผล', key: 'result_published_at', width: 20 },
+        { header: 'ค่าสมัครสอบ (บาท)', key: 'payment_amount', width: 16 },
+        { header: 'สถานะการชำระ', key: 'payment_status', width: 16 },
+        { header: 'เลขอ้างอิงการโอน', key: 'transfer_ref', width: 20 },
+        { header: 'วันที่ยืนยันการชำระ', key: 'payment_verified_at', width: 20 },
     ];
     rows.forEach((row) => examSheet.addRow({
         ...row,
@@ -76,10 +80,15 @@ function createRegistrationWorkbook(rows, filters, options = {}) {
         exam_location: row.session_location || row.exam_location || '',
         registered_at: asExcelDate(row.registered_at),
         result_published_at: asExcelDate(row.result_published_at),
+        payment_amount: row.payment_amount == null ? null : Number(row.payment_amount),
+        payment_status: row.payment_status || '',
+        transfer_ref: row.transfer_ref || '',
+        payment_verified_at: asExcelDate(row.payment_verified_at),
     }));
     ['K'].forEach(() => {});
     ['L'].forEach((letter) => { examSheet.getColumn(letter).numFmt = 'dd/mm/yyyy'; });
-    ['Y', 'Z'].forEach((letter) => { examSheet.getColumn(letter).numFmt = 'dd/mm/yyyy hh:mm'; });
+    ['Y', 'Z', 'AD'].forEach((letter) => { examSheet.getColumn(letter).numFmt = 'dd/mm/yyyy hh:mm'; });
+    examSheet.getColumn('AA').numFmt = '0.00';
     ['Q', 'R', 'S', 'T'].forEach((letter) => { examSheet.getColumn(letter).numFmt = '0.00'; });
     styleWorksheet(examSheet);
 

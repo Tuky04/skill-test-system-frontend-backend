@@ -122,3 +122,49 @@ exports.verifyPayment = async (req, res) => {
         return res.status(500).json({ success: false, message: 'ไม่สามารถบันทึกผลการตรวจสลิปได้' });
     }
 };
+
+// เจ้าหน้าที่: ยกเลิกผล "ชำระแล้ว" ที่ยืนยันผิด เพื่อตรวจสลิปใหม่ (ทำได้เฉพาะก่อนอนุมัติสิทธิ์สอบ)
+exports.reopenPayment = async (req, res) => {
+    const registrationId = Number(req.params.registration_id);
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+    try {
+        if (!Number.isInteger(registrationId) || registrationId <= 0) throw new HttpError(400, 'เลขใบสมัครไม่ถูกต้อง');
+        if (reason.length < 3 || reason.length > 255) throw new HttpError(400, 'กรุณาระบุเหตุผลที่ต้องตรวจสลิปใหม่ 3-255 ตัวอักษร');
+
+        const row = await db.withTransaction(async (conn) => {
+            const [[found]] = await conn.query(
+                `SELECT p.payment_id, p.payment_status, p.amount, p.slip_filename, r.registration_id, r.application_status, s.user_id, c.course_name
+                 FROM payments p
+                 JOIN registrations r ON r.registration_id = p.registration_id
+                 JOIN students s ON s.student_id = r.student_id
+                 JOIN exam_courses c ON c.course_id = r.course_id
+                 WHERE p.registration_id = ? FOR UPDATE`,
+                [registrationId]
+            );
+            if (!found) throw new HttpError(404, 'ไม่พบรายการชำระเงิน');
+            if (found.payment_status !== PAYMENT_STATUS.PAID || !found.slip_filename || Number(found.amount) <= 0) {
+                throw new HttpError(409, 'แก้ผลได้เฉพาะรายการที่ยืนยันการชำระจากสลิปแล้วเท่านั้น');
+            }
+            if (found.application_status !== APPLICATION_STATUS.PENDING) {
+                throw new HttpError(409, 'ใบสมัครนี้ได้รับการพิจารณาแล้ว กรุณาส่งกลับรอตรวจก่อนแก้ผลการชำระ');
+            }
+            await conn.query(
+                `UPDATE payments SET payment_status = ?, verified_by = NULL, verified_at = NULL, verify_note = ? WHERE payment_id = ?`,
+                [PAYMENT_STATUS.SUBMITTED, reason, found.payment_id]
+            );
+            await logAdminAction({
+                actorId: req.user.id, action: 'REOPEN_PAYMENT', targetType: 'registration', targetId: registrationId,
+                details: { from: found.payment_status, to: PAYMENT_STATUS.SUBMITTED, amount: Number(found.amount), reason },
+            }, conn);
+            return found;
+        });
+
+        createNotification({ user_id: row.user_id, ...templates.payment_reopened(row.course_name, reason) })
+            .catch((error) => console.error('[Payment notification]', error.message));
+        return res.json({ success: true, message: 'ยกเลิกผลยืนยันแล้ว รายการกลับเป็นรอตรวจสลิป' });
+    } catch (error) {
+        if (error instanceof HttpError) return res.status(error.status).json({ success: false, message: error.message });
+        console.error('[Reopen payment]', error.message);
+        return res.status(500).json({ success: false, message: 'ไม่สามารถแก้ผลการตรวจสลิปได้' });
+    }
+};

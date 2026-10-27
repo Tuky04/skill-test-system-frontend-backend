@@ -107,3 +107,15 @@ test('old applications made before the fee existed show no payment due', async (
   render(<StudentDashboard />);
   expect(await screen.findByText(/สมัครไว้ก่อนเริ่มเก็บค่าสมัคร/)).toBeInTheDocument();
 });
+
+test('the retake button stays hidden while a retake application is still waiting for approval', async () => {
+  mockApi({ attempts: [
+    attempt({ registration_id: 5, application_status: 'อนุมัติสิทธิ์สอบ', exam_status: 'ประกาศผลแล้ว', payment_status: 'ชำระแล้ว', department_status: 'ไม่ได้รับวุฒิบัตร', total_score: 55 }),
+    attempt({ registration_id: 6, attempt_no: 2, is_retake: 1, application_no: 'APP-6' }),
+  ] });
+
+  render(<StudentDashboard />);
+
+  expect(await screen.findByText('APP-6')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /สมัครสอบซ่อม/ })).not.toBeInTheDocument();
+});

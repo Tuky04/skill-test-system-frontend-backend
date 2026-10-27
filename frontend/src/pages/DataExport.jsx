@@ -97,7 +97,7 @@ const DataExport = () => {
             <td style={{padding:12}}>{r.application_no}</td><td style={{padding:12}}><b>{r.university_student_code||'-'}</b><div style={{fontSize:12,color:'#68758a'}}>{r.student_code}</div></td>
             <td style={{padding:12}}>{r.full_name}</td><td style={{padding:12,maxWidth:260}}>{r.course_name}</td><td style={{padding:12,maxWidth:230}}>{r.session_name||'-'}<div style={{fontSize:12}}>ครั้งที่ {r.attempt_no}</div></td>
             <td style={{padding:12,maxWidth:250}}>{fmt(r.exam_date)} · {r.exam_time||'-'}<div style={{fontSize:12,color:'#68758a'}}>{r.exam_location||'-'}</div></td>
-            <td style={{padding:12}}>{r.application_status}<div style={{fontSize:12,color:'#68758a'}}>{r.exam_status}</div></td><td style={{padding:12}}>{r.total_score??'-'}<div style={{fontSize:12,color:'#68758a'}}>{r.department_status}</div></td>
+            <td style={{padding:12}}>{r.application_status}<div style={{fontSize:12,color:'#68758a'}}>{r.exam_status}</div>{r.payment_status&&<div style={{fontSize:12,color:'#68758a'}}>ค่าสมัคร: {r.payment_status}</div>}</td><td style={{padding:12}}>{r.total_score??'-'}<div style={{fontSize:12,color:'#68758a'}}>{r.department_status}</div></td>
           </tr>):<tr><td colSpan="8" style={{padding:30,textAlign:'center',color:'#68758a'}}>กำหนดตัวกรองแล้วกด “แสดงตัวอย่าง” เพื่อตรวจข้อมูลก่อนส่งออก</td></tr>}</tbody>
         </table></div>
       </section>

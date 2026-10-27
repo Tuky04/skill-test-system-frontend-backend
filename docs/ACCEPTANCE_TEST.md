@@ -2,8 +2,8 @@
 
 ## อัตโนมัติ
 
-- Backend: `npm test` (65 กรณี รวมชุด `payment.test.js` ของค่าสมัครสอบ)
-- Frontend: `npm test` (45 กรณี)
+- Backend: `npm test` (66 กรณี รวมชุด `payment.test.js` ของค่าสมัครสอบ)
+- Frontend: `npm test` (47 กรณี)
 - Frontend: `CI=true npm run build` (PowerShell ใช้ `$env:CI='true'`)
 - Dependency: `npm audit` ใน CI ที่องค์กรอนุญาตให้เชื่อม npm registry
 

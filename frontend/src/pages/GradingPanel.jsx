@@ -255,6 +255,17 @@ const GradingPanel = () => {
         } catch (error) { showMsg(error.response?.data?.message || 'ไม่สามารถบันทึกผลการตรวจสลิปได้', 'error'); }
         finally { setBusyId(null); }
     };
+    const handleReopenPayment = async (regId) => {
+        const reason = window.prompt('ระบุเหตุผลที่ต้องตรวจสลิปใหม่ (อย่างน้อย 3 ตัวอักษร) รายการจะกลับเป็น "รอตรวจสลิป"');
+        if (reason === null) return;
+        if (reason.trim().length < 3) { showMsg('กรุณาระบุเหตุผลที่ต้องตรวจสลิปใหม่ อย่างน้อย 3 ตัวอักษร', 'error'); return; }
+        setBusyId(regId);
+        try {
+            const res = await API.put(`/staff/payments/${regId}/reopen`, { reason: reason.trim() });
+            if (res.data.success) { showMsg(res.data.message); await fetchData(true); }
+        } catch (error) { showMsg(error.response?.data?.message || 'ไม่สามารถแก้ผลการตรวจสลิปได้', 'error'); }
+        finally { setBusyId(null); }
+    };
     const payModalRegistration = allApps.find(item => item.registration_id === payModalId);
 
     const handleExamStatus = async (regId, status) => {
@@ -408,6 +419,7 @@ const GradingPanel = () => {
                                             <td><StatusBadge s={a.application_status}/></td>
                                             <td style={{ whiteSpace:'nowrap' }}>
                                                 <PaymentBadge s={a.payment_status}/>
+                                                {a.payment_status==='ชำระแล้ว' && a.application_status==='รอดำเนินการ' && a.slip_filename && Number(a.payment_amount)>0 && <div><button disabled={busyId===a.registration_id} onClick={()=>handleReopenPayment(a.registration_id)} title="ยกเลิกผลยืนยันที่กดผิด แล้วตรวจสลิปใหม่" style={{ marginTop:4, background:'none', color:'#475569', border:'1px solid #CBD5E1', borderRadius:5, padding:'3px 8px', cursor:'pointer', fontSize:11 }}>↺ ตรวจสลิปใหม่</button></div>}
                                                 {a.payment_status==='รอตรวจสลิป' && <div><button onClick={()=>openPayModal(a)} style={{ marginTop:4, background:'#1D4ED8', color:'white', border:'none', borderRadius:5, padding:'4px 9px', cursor:'pointer', fontSize:11.5, fontWeight:600 }}>🔎 ตรวจสลิป</button></div>}
                                             </td>
                                             <td style={{ fontSize:12 }}>{a.exam_status||'รอสอบ'}</td>
